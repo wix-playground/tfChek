@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
 	"tfChek/launcher"
-	"tfChek/readwriter"
 )
 
 var upgrader = websocket.Upgrader{
@@ -50,20 +50,21 @@ func reader(conn *websocket.Conn) {
 }
 
 func processAdapter(conn *websocket.Conn) {
-	rw := readwriter.NewChanWriter()
-	go launcher.Exmpl(rw)
-	buf := make([]byte, 128)
+
+	r, w := io.Pipe()
+	go launcher.Exmpl(w)
+	reader := bufio.NewReader(r)
 	for {
-		n, err := rw.Read(buf)
+		line, _, err := reader.ReadLine()
 		if err == io.EOF {
-			err = conn.WriteMessage(websocket.TextMessage, buf[:n])
+			err = conn.WriteMessage(websocket.TextMessage, line)
 			if err != nil {
 				log.Println(err)
 				return
 			}
 			break
 		}
-		err = conn.WriteMessage(websocket.TextMessage, buf)
+		err = conn.WriteMessage(websocket.TextMessage, line)
 		if err != nil {
 			log.Println(err)
 			return
