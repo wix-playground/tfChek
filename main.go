@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
 	"tfChek/launcher"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{
@@ -52,7 +54,14 @@ func reader(conn *websocket.Conn) {
 func processAdapter(conn *websocket.Conn) {
 
 	r, w := io.Pipe()
-	go launcher.Exmpl(w)
+	ctx, cancel := context.WithTimeout(context.WithValue(context.Background(), launcher.WD, "/Users/maksymsh/terraform/production_42/generator/output/100/logs"), 60*time.Second)
+	defer cancel()
+	commands := make(map[string][]string)
+	commands["init"] = []string{"../../../../bin/terraform", "init", "-force-copy"}
+	commands["plan"] = []string{"../../../../bin/terraform", "plan", "-lock-timeout=1200s", "-out=terraform.plan"}
+	//go launcher.RunCommand(w,ctx,"../../../../bin/terraform", "init", "-force-copy")
+	go launcher.RunCommands(w, ctx, &commands)
+	defer w.Close()
 	reader := bufio.NewReader(r)
 	for {
 		line, _, err := reader.ReadLine()
