@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bufio"
-	"context"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"tfChek/launcher"
-	"time"
 )
 
 var upgrader = websocket.Upgrader{
@@ -17,8 +14,14 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+var disp launcher.Dispatcher
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Home page!")
+}
+
+func runEnvironment(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
@@ -50,35 +53,8 @@ func reader(conn *websocket.Conn) {
 		return
 	}
 }
-
 func processAdapter(conn *websocket.Conn) {
-
-	r, w := io.Pipe()
-	ctx, cancel := context.WithTimeout(context.WithValue(context.Background(), launcher.WD, "/Users/maksymsh/terraform/production_42/generator/output/100/logs"), 60*time.Second)
-	defer cancel()
-	commands := make(map[string][]string)
-	commands["init"] = []string{"../../../../bin/terraform", "init", "-force-copy"}
-	commands["plan"] = []string{"../../../../bin/terraform", "plan", "-lock-timeout=1200s", "-out=terraform.plan"}
-	//go launcher.RunCommand(w,ctx,"../../../../bin/terraform", "init", "-force-copy")
-	go launcher.RunCommands(w, ctx, &commands)
-	defer w.Close()
-	reader := bufio.NewReader(r)
-	for {
-		line, _, err := reader.ReadLine()
-		if err == io.EOF {
-			err = conn.WriteMessage(websocket.TextMessage, line)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			break
-		}
-		err = conn.WriteMessage(websocket.TextMessage, line)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	}
+	disp.Launch(conn, strconv.Itoa(100), "logs", []string{"./run.sh", "-n", "100/logs"})
 }
 
 func setupRoutes() {
@@ -87,6 +63,10 @@ func setupRoutes() {
 }
 
 func main() {
+	log.Println("Starting launcher...")
+	disp = launcher.NewDispatcher()
+	go disp.Start()
+	defer disp.Close()
 	fmt.Println("Starting server")
 	setupRoutes()
 	log.Fatal(http.ListenAndServe(":8085", nil))

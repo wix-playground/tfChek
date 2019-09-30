@@ -49,16 +49,28 @@
     <script type="text/javascript">
         let socket = new WebSocket("ws://127.0.0.1:8085/ws");
         console.log("Attempting Connection...");
-        var ansi_up = new AnsiUp;
+        let ansi_up = new AnsiUp;
+        let last = null
         function writeToScreen(message){
           let output = document.getElementById("output");
           let anchor = document.getElementById("anchor")
          let pre = document.createElement("pre");
           pre.style.wordWrap = "break-word";
-          pre.innerHTML = ansi_up.ansi_to_html(message);
-          // output.appendChild(pre);
-            output.insertBefore(pre,anchor)
-            window.scrollTo(0,output.scrollHeight)
+          let msg = ansi_up.ansi_to_html(message)
+          if (message.includes('\r')) {
+
+            console.log("Rewriting: " + last.innerHTML)
+            console.log("with: " + msg)
+            last.innerHTML = msg
+
+          } else {
+            pre.innerHTML =msg ;
+            last = pre
+            // output.appendChild(pre);
+            console.log("New line: " + msg)
+            output.insertBefore(pre, anchor)
+            window.scrollTo(0, output.scrollHeight)
+          }
         }
 
         socket.onopen = () => {
