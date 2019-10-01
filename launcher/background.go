@@ -9,21 +9,27 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 )
 
 type TaskManager interface {
-	Launch(conn *websocket.Conn, env, layer string, cmd []string) (int, error)
 	Close() error
 	Start() error
+	//Create task
 	TaskOfRunSh(rcs RunShCmd, ctx context.Context) (BackgroundTask, error)
+	Launch(bt BackgroundTask) (int, error)
 }
 
 type BackgroundTask interface {
 	Run() error
+	GetId() int
 	GetStdOut() io.Reader
 	GetStdErr() io.Reader
 	GetStdIn() io.Writer
+	GetStatus() TaskStatus
+	SetStatus(status TaskStatus)
+	SyncName() string
 }
 
 type BackgroundTaskImpl struct {
@@ -39,6 +45,22 @@ type BackgroundTaskImpl struct {
 	in      io.Writer
 }
 
+func (bti *BackgroundTaskImpl) GetStatus() TaskStatus {
+	return bti.Status
+}
+
+func (bti *BackgroundTaskImpl) SetStatus(status TaskStatus) {
+	bti.Status = status
+}
+
+func (bti *BackgroundTaskImpl) GetId() int {
+	return bti.Id
+}
+
+func (bti *BackgroundTaskImpl) SyncName() string {
+	return bti.Command
+}
+
 func (bti *BackgroundTaskImpl) GetStdOut() io.Reader {
 	return bti.out
 }
@@ -52,6 +74,9 @@ func (bti *BackgroundTaskImpl) GetStdIn() io.Writer {
 }
 
 func (bti *BackgroundTaskImpl) Run() error {
+	if bti.Status != SCHEDULED {
+		return errors.New("cannot run unscheduled task")
+	}
 	outPipeReader, outPipeWriter := io.Pipe()
 	errPipeReader, errPipeWriter := io.Pipe()
 	inPipeReader, inPipeWriter := io.Pipe()
@@ -88,24 +113,32 @@ func (bti *BackgroundTaskImpl) Run() error {
 	command.Stdout = outPipeWriter
 	command.Stderr = errPipeWriter
 	command.Stdin = inPipeReader
+	bti.Status = STARTED
 	err := command.Run()
-	log.Printf("Command finished with error: %v", err)
+	if err != nil {
+		log.Printf("Command finished with error: %v", err)
+		bti.Status = FAILED
+	} else {
+		bti.Status = DONE
+	}
+
 	return err
 }
 
 type TaskManagerImpl struct {
-	sequence int
-	started  bool
-	stop     chan bool
-	threads  map[string]chan BackgroundTask
-	//lock     sync.Mutex
+	sequence       int
+	started        bool
+	stop           chan bool
+	threads        map[string]chan BackgroundTask
 	defaultWorkDir string
+	lock           sync.Mutex
 }
 
 func NewTaskManager() TaskManager {
 	return &TaskManagerImpl{started: false, stop: make(chan bool), sequence: 0, threads: make(map[string]chan BackgroundTask), defaultWorkDir: "/tmp/production_42"}
 }
 
+//TODO: Reimplement it Make it more specific to be able to lock by state
 func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (BackgroundTask, error) {
 	command, args, err := rcs.CommandArgs()
 	if err != nil {
@@ -116,8 +149,21 @@ func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Backg
 	return &t, nil
 }
 
-func (tm *TaskManagerImpl) Launch(conn *websocket.Conn, env, layer string, cmd []string) (int, error) {
-	panic("implement me")
+func (tm *TaskManagerImpl) Launch(bt BackgroundTask) (int, error) {
+	if bt.GetStatus() != OPEN {
+		return -1, errors.New("cannot launch task in not open status")
+	}
+	if tm.threads[bt.SyncName()] == nil {
+		tm.lock.Lock()
+		if tm.threads[bt.SyncName()] == nil {
+			tm.threads[bt.SyncName()] = make(chan BackgroundTask)
+		}
+		tm.lock.Unlock()
+	}
+	bt.SetStatus(SCHEDULED)
+	tm.threads[bt.SyncName()] <- bt
+
+	return bt.GetId(), nil
 }
 
 func (tm *TaskManagerImpl) Close() error {

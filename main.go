@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"tfChek/launcher"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{
@@ -16,6 +18,7 @@ var upgrader = websocket.Upgrader{
 }
 
 var disp launcher.Dispatcher
+var tm launcher.TaskManager
 
 //Deprecated
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
@@ -89,8 +92,23 @@ func apiRSEL(w http.ResponseWriter, r *http.Request) {
 	no := r.Form.Get("no")
 	yes := r.Form.Get("yes")
 	cmd = launcher.RunShCmd{Layer: layer, Env: env, All: all == "true", Omit: omit == "true", Targets: targets, No: no == "true", Yes: yes == "true"}
-	log.Println(cmd)
-	launcher.LaunchRunSh()
+	ctx, cancel := context.WithTimeout(context.WithValue(context.Background(), launcher.WD, "/tmp/production_42"), 60*time.Second)
+	bt, err := tm.TaskOfRunSh(cmd, ctx)
+	if err != nil {
+		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+	}
+	id, err := tm.Launch(bt)
+	if err != nil {
+		em := fmt.Sprintf("Cannot launch background task. Error: %s", err.Error())
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+	}
 }
 func setupRoutes() {
 	router := mux.NewRouter()
@@ -103,10 +121,15 @@ func setupRoutes() {
 }
 
 func main() {
-	log.Println("Starting launcher...")
-	disp = launcher.NewDispatcher()
-	go disp.Start()
-	defer disp.Close()
+	//log.Println("Starting launcher...")
+	//disp = launcher.NewDispatcher()
+	tm = launcher.NewTaskManager()
+	//fmt.Println("Starting dispatcher")
+	//go disp.Start()
+	//defer disp.Close()
+	fmt.Println("Starting task manager")
+	go tm.Start()
+	defer tm.Close()
 	fmt.Println("Starting server")
 	setupRoutes()
 	log.Fatal(http.ListenAndServe(":8085", nil))
