@@ -34,7 +34,7 @@
       </style>
   </head>
   <body>
-    <script src="file:///Users/maksymsh/node_modules/ansi_up/ansi_up.js" type="text/javascript"></script>
+    <script src="static/script/ansi_up/ansi_up.js" type="text/javascript"></script>
     <script>
         function start_scroll_down() {
             scroll = setInterval(function(){ window.scrollBy(0, 1000); console.log('start');}, 1500);
@@ -47,7 +47,7 @@
     </script>
 
     <script type="text/javascript">
-        let socket = new WebSocket("ws://127.0.0.1:8085/ws");
+        let socket = new WebSocket("ws://127.0.0.1:8085/runsh/env");
         console.log("Attempting Connection...");
         let ansi_up = new AnsiUp;
         let last = null

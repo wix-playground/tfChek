@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	WD = "WORKING_DIRECTORY"
+	WD      = "WORKING_DIRECTORY"
+	ENVVARS = "ENVIRONMENT_VARIABLES"
 )
 
 type Dispatcher interface {
@@ -113,4 +114,15 @@ func (d *DispatcherImpl) Start() error {
 			time.Sleep(time.Second)
 		}
 	}
+}
+
+//TODO: Optimize interface
+func LaunchRunSh(d Dispatcher, c *websocket.Conn, cmd RunShCmd) (int, error) {
+	command, args, err := cmd.CommandArgs()
+	if err != nil {
+		return -1, err
+	}
+	comargs := []string{command}
+	comargs = append(comargs, args...)
+	return d.Launch(c, cmd.Env, cmd.Layer, comargs)
 }
