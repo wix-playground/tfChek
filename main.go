@@ -94,6 +94,7 @@ func apiRSEL(w http.ResponseWriter, r *http.Request) {
 	cmd = launcher.RunShCmd{Layer: layer, Env: env, All: all == "true", Omit: omit == "true", Targets: targets, No: no == "true", Yes: yes == "true"}
 	ctx, cancel := context.WithTimeout(context.WithValue(context.Background(), launcher.WD, "/tmp/production_42"), 60*time.Second)
 	bt, err := tm.TaskOfRunSh(cmd, ctx)
+	tm.RegisterCancel(bt, cancel)
 	if err != nil {
 		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
 		_, e := w.Write([]byte(em))
@@ -101,7 +102,7 @@ func apiRSEL(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
 		}
 	}
-	id, err := tm.Launch(bt)
+	err = tm.Launch(bt)
 	if err != nil {
 		em := fmt.Sprintf("Cannot launch background task. Error: %s", err.Error())
 		_, e := w.Write([]byte(em))

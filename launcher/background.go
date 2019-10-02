@@ -18,7 +18,8 @@ type TaskManager interface {
 	Start() error
 	//Create task
 	TaskOfRunSh(rcs RunShCmd, ctx context.Context) (BackgroundTask, error)
-	Launch(bt BackgroundTask) (int, error)
+	Launch(bt BackgroundTask) error
+	RegisterCancel(task BackgroundTask, cancel func())
 }
 
 type BackgroundTask interface {
@@ -132,10 +133,21 @@ type TaskManagerImpl struct {
 	threads        map[string]chan BackgroundTask
 	defaultWorkDir string
 	lock           sync.Mutex
+	cancel         map[int]func()
+}
+
+func (tm *TaskManagerImpl) RegisterCancel(task BackgroundTask, cancel func()) {
+	tm.cancel[task.GetId()] = cancel
 }
 
 func NewTaskManager() TaskManager {
-	return &TaskManagerImpl{started: false, stop: make(chan bool), sequence: 0, threads: make(map[string]chan BackgroundTask), defaultWorkDir: "/tmp/production_42"}
+	return &TaskManagerImpl{started: false,
+		stop:           make(chan bool),
+		sequence:       0,
+		threads:        make(map[string]chan BackgroundTask),
+		defaultWorkDir: "/tmp/production_42",
+		cancel:         make(map[int]func()),
+	}
 }
 
 //TODO: Reimplement it Make it more specific to be able to lock by state
@@ -149,9 +161,9 @@ func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Backg
 	return &t, nil
 }
 
-func (tm *TaskManagerImpl) Launch(bt BackgroundTask) (int, error) {
+func (tm *TaskManagerImpl) Launch(bt BackgroundTask) error {
 	if bt.GetStatus() != OPEN {
-		return -1, errors.New("cannot launch task in not open status")
+		return errors.New("cannot launch task in not open status")
 	}
 	if tm.threads[bt.SyncName()] == nil {
 		tm.lock.Lock()
@@ -163,11 +175,16 @@ func (tm *TaskManagerImpl) Launch(bt BackgroundTask) (int, error) {
 	bt.SetStatus(SCHEDULED)
 	tm.threads[bt.SyncName()] <- bt
 
-	return bt.GetId(), nil
+	return nil
 }
 
 func (tm *TaskManagerImpl) Close() error {
 	close(tm.stop)
+	for id, c := range tm.cancel {
+		log.Printf("Cancelling task %d", id)
+		c()
+		tm.cancel[id] = nil
+	}
 	return nil
 }
 
@@ -179,7 +196,7 @@ func (tm *TaskManagerImpl) Start() error {
 	for {
 		for s, tasks := range tm.threads {
 			if !started[s] {
-				go runTasks(tasks)
+				go tm.runTasks(tasks)
 				started[s] = true
 			}
 		}
@@ -196,11 +213,13 @@ func (tm *TaskManagerImpl) Start() error {
 	}
 }
 
-func runTasks(tasks <-chan BackgroundTask) {
+func (tm *TaskManagerImpl) runTasks(tasks <-chan BackgroundTask) {
 	for t := range tasks {
 		err := t.Run()
 		if err != nil {
 			log.Printf("Task failed: %s", err)
 		}
+		//Clean up task cancel functions
+		tm.cancel[t.GetId()] = nil
 	}
 }
