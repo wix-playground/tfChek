@@ -20,6 +20,7 @@ type TaskManager interface {
 	TaskOfRunSh(rcs RunShCmd, ctx context.Context) (BackgroundTask, error)
 	Launch(bt BackgroundTask) error
 	RegisterCancel(task BackgroundTask, cancel func())
+	GetTask(id int) BackgroundTask
 }
 
 type BackgroundTask interface {
@@ -84,6 +85,9 @@ func (bti *BackgroundTaskImpl) Run() error {
 	bti.out = outPipeReader
 	bti.err = errPipeReader
 	bti.in = inPipeWriter
+	defer outPipeWriter.Close()
+	defer errPipeWriter.Close()
+	defer inPipeReader.Close()
 	//Get working directory
 	var cwd string
 	if d, ok := bti.Context.Value(WD).(string); ok {
@@ -97,13 +101,11 @@ func (bti *BackgroundTaskImpl) Run() error {
 	}
 	log.Printf("Task id: %d working directory: %s", bti.Id, cwd)
 	//Get environment
-	sysenv := make([]string, 0)
+	sysenv := os.Environ()
 	if d, ok := bti.Context.Value(ENVVARS).(map[string]string); ok {
 		for k, v := range d {
 			sysenv = append(sysenv, fmt.Sprintf("%s=%s", k, v))
 		}
-	} else {
-		sysenv = os.Environ()
 	}
 	log.Printf("Task id: %d environment: %s", bti.Id, sysenv)
 
@@ -114,15 +116,26 @@ func (bti *BackgroundTaskImpl) Run() error {
 	command.Stdout = outPipeWriter
 	command.Stderr = errPipeWriter
 	command.Stdin = inPipeReader
-	bti.Status = STARTED
-	err := command.Run()
+	//I will write nothing to the command
+	err := inPipeWriter.Close()
 	if err != nil {
-		log.Printf("Command finished with error: %v", err)
-		bti.Status = FAILED
-	} else {
-		bti.Status = DONE
+		log.Printf("Cannot close stdin for task id: %d", bti.Id)
 	}
 
+	bti.Status = STARTED
+	err = command.Run()
+	if err != nil {
+		if err.Error() == "context deadline exceeded" {
+			log.Printf("Command timed out error: %v", err)
+			bti.Status = TIMEOUT
+		} else {
+			log.Printf("Command finished with error: %v", err)
+			bti.Status = FAILED
+		}
+	} else {
+		bti.Status = DONE
+		log.Println("Command completed successfully")
+	}
 	return err
 }
 
@@ -134,6 +147,11 @@ type TaskManagerImpl struct {
 	defaultWorkDir string
 	lock           sync.Mutex
 	cancel         map[int]func()
+	activeTasks    map[int]BackgroundTask
+}
+
+func (tm *TaskManagerImpl) GetTask(id int) BackgroundTask {
+	return tm.activeTasks[id]
 }
 
 func (tm *TaskManagerImpl) RegisterCancel(task BackgroundTask, cancel func()) {
@@ -147,6 +165,7 @@ func NewTaskManager() TaskManager {
 		threads:        make(map[string]chan BackgroundTask),
 		defaultWorkDir: "/tmp/production_42",
 		cancel:         make(map[int]func()),
+		activeTasks:    make(map[int]BackgroundTask),
 	}
 }
 
@@ -158,6 +177,7 @@ func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Backg
 	}
 	tm.sequence++
 	t := BackgroundTaskImpl{Id: tm.sequence, Command: command, Args: args, Context: ctx, Status: OPEN, Socket: make(chan *websocket.Conn)}
+	tm.activeTasks[t.Id] = &t
 	return &t, nil
 }
 
