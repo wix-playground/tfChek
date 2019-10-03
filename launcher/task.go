@@ -20,6 +20,22 @@ func (se *StateError) Error() string {
 	return se.msg
 }
 
+type BackgroundTask interface {
+	Run() error
+	GetId() int
+	GetStdOut() io.Reader
+	GetStdErr() io.Reader
+	GetStdIn() io.Writer
+	GetStatus() TaskStatus
+	SetStatus(status TaskStatus)
+	SyncName() string
+	Schedule() error
+	Start() error
+	Done() error
+	Fail() error
+	TimeoutFail() error
+}
+
 const (
 	OPEN = iota
 	SCHEDULED

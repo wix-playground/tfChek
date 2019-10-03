@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/gorilla/websocket"
-	"io"
 	"log"
 	"sync"
 	"time"
@@ -15,6 +14,9 @@ const (
 	ENVVARS = "ENVIRONMENT_VARIABLES"
 )
 
+var tm TaskManager
+var tml sync.Mutex
+
 type TaskManager interface {
 	Close() error
 	Start() error
@@ -23,22 +25,6 @@ type TaskManager interface {
 	Launch(bt BackgroundTask) error
 	RegisterCancel(task BackgroundTask, cancel func())
 	GetTask(id int) BackgroundTask
-}
-
-type BackgroundTask interface {
-	Run() error
-	GetId() int
-	GetStdOut() io.Reader
-	GetStdErr() io.Reader
-	GetStdIn() io.Writer
-	GetStatus() TaskStatus
-	SetStatus(status TaskStatus)
-	SyncName() string
-	Schedule() error
-	Start() error
-	Done() error
-	Fail() error
-	TimeoutFail() error
 }
 
 type TaskManagerImpl struct {
@@ -58,6 +44,16 @@ func (tm *TaskManagerImpl) GetTask(id int) BackgroundTask {
 
 func (tm *TaskManagerImpl) RegisterCancel(task BackgroundTask, cancel func()) {
 	tm.cancel[task.GetId()] = cancel
+}
+
+func GetTaskManager() TaskManager {
+	if tm == nil {
+		tml.Lock()
+		if tm == nil {
+			tm = NewTaskManager()
+		}
+	}
+	return tm
 }
 
 func NewTaskManager() TaskManager {
