@@ -3,12 +3,9 @@ package launcher
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
-	"os"
-	"os/exec"
 	"sync"
 	"time"
 )
@@ -37,111 +34,11 @@ type BackgroundTask interface {
 	GetStatus() TaskStatus
 	SetStatus(status TaskStatus)
 	SyncName() string
-}
-
-type BackgroundTaskImpl struct {
-	Name    string
-	Id      int
-	Command string
-	Args    []string
-	Context context.Context
-	Status  TaskStatus
-	Socket  chan *websocket.Conn
-	out     io.Reader
-	err     io.Reader
-	in      io.Writer
-}
-
-func (bti *BackgroundTaskImpl) GetStatus() TaskStatus {
-	return bti.Status
-}
-
-func (bti *BackgroundTaskImpl) SetStatus(status TaskStatus) {
-	bti.Status = status
-}
-
-func (bti *BackgroundTaskImpl) GetId() int {
-	return bti.Id
-}
-
-func (bti *BackgroundTaskImpl) SyncName() string {
-	return bti.Command
-}
-
-func (bti *BackgroundTaskImpl) GetStdOut() io.Reader {
-	return bti.out
-}
-
-func (bti *BackgroundTaskImpl) GetStdErr() io.Reader {
-	return bti.err
-}
-
-func (bti *BackgroundTaskImpl) GetStdIn() io.Writer {
-	return bti.in
-}
-
-func (bti *BackgroundTaskImpl) Run() error {
-	if bti.Status != SCHEDULED {
-		return errors.New("cannot run unscheduled task")
-	}
-	outPipeReader, outPipeWriter := io.Pipe()
-	errPipeReader, errPipeWriter := io.Pipe()
-	inPipeReader, inPipeWriter := io.Pipe()
-	bti.out = outPipeReader
-	bti.err = errPipeReader
-	bti.in = inPipeWriter
-	defer outPipeWriter.Close()
-	defer errPipeWriter.Close()
-	defer inPipeReader.Close()
-	//Get working directory
-	var cwd string
-	if d, ok := bti.Context.Value(WD).(string); ok {
-		cwd = d
-	} else {
-		d, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		cwd = d
-	}
-	log.Printf("Task id: %d working directory: %s", bti.Id, cwd)
-	//Get environment
-	sysenv := os.Environ()
-	if d, ok := bti.Context.Value(ENVVARS).(map[string]string); ok {
-		for k, v := range d {
-			sysenv = append(sysenv, fmt.Sprintf("%s=%s", k, v))
-		}
-	}
-	log.Printf("Task id: %d environment: %s", bti.Id, sysenv)
-
-	command := exec.CommandContext(bti.Context, bti.Command, bti.Args...)
-	command.Dir = cwd
-	command.Env = sysenv
-	log.Printf("Running command and waiting for it to finish...")
-	command.Stdout = outPipeWriter
-	command.Stderr = errPipeWriter
-	command.Stdin = inPipeReader
-	//I will write nothing to the command
-	err := inPipeWriter.Close()
-	if err != nil {
-		log.Printf("Cannot close stdin for task id: %d", bti.Id)
-	}
-
-	bti.Status = STARTED
-	err = command.Run()
-	if err != nil {
-		if err.Error() == "context deadline exceeded" {
-			log.Printf("Command timed out error: %v", err)
-			bti.Status = TIMEOUT
-		} else {
-			log.Printf("Command finished with error: %v", err)
-			bti.Status = FAILED
-		}
-	} else {
-		bti.Status = DONE
-		log.Println("Command completed successfully")
-	}
-	return err
+	Schedule() error
+	Start() error
+	Done() error
+	Fail() error
+	TimeoutFail() error
 }
 
 type TaskManagerImpl struct {
