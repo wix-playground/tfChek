@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	WD      = "WORKING_DIRECTORY"
+	ENVVARS = "ENVIRONMENT_VARIABLES"
+)
+
 type TaskManager interface {
 	Close() error
 	Start() error

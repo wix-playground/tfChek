@@ -25,27 +25,7 @@ const (
 	PORT      = "8085"
 )
 
-var disp launcher.Dispatcher
 var tm launcher.TaskManager
-
-//Deprecated
-func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-	//fmt.Fprintf(w, "Hello world!")
-	upgrader.CheckOrigin = func(r *http.Request) bool {
-		return true
-	}
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-	}
-	log.Println("Client connected")
-	err = ws.WriteMessage(1, []byte("Hi, client!"))
-	if err != nil {
-		log.Println(err)
-	}
-	//reader(ws)
-	processAdapter(ws)
-}
 
 func runShWs(w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool {
@@ -116,24 +96,6 @@ func writeToWS(in io.Reader, ws *websocket.Conn, errc chan<- error, lock *sync.M
 	wg.Done()
 }
 
-//Deprecated
-func reader(conn *websocket.Conn) {
-	messageType, p, err := conn.ReadMessage()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	fmt.Println(string(p))
-	if err = conn.WriteMessage(messageType, p); err != nil {
-		log.Println(err)
-		return
-	}
-}
-
-//Deprecated
-func processAdapter(conn *websocket.Conn) {
-	disp.Launch(conn, strconv.Itoa(100), "logs", []string{"./run.sh", "-n", "100/logs"})
-}
 func apiRSEL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var cmd launcher.RunShCmd
@@ -186,12 +148,9 @@ func apiRSEL(w http.ResponseWriter, r *http.Request) {
 }
 func setupRoutes() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	//router.Handle("/", http.StripPrefix(STATICDIR,http.FileServer(http.Dir("."+STATICDIR))))
 	router.HandleFunc("/ws/runsh/{id}", runShWs).Methods("GET")
-	//router.Path("/api/v1/runsh/{Env}").HandlerFunc(apiRSE).Methods("GET").Name("Env")
 	router.Path("/api/v1/runsh/{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(apiRSEL)
 	router.PathPrefix(STATICDIR).Handler(http.StripPrefix(STATICDIR, http.FileServer(http.Dir("."+STATICDIR))))
-	//router.HandleFunc("/ws", wsEndpoint).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		http.ServeFile(writer, request, "./static/index.html")
 	})
@@ -200,12 +159,7 @@ func setupRoutes() *mux.Router {
 }
 
 func main() {
-	//log.Println("Starting launcher...")
-	//disp = launcher.NewDispatcher()
 	tm = launcher.NewTaskManager()
-	//fmt.Println("Starting dispatcher")
-	//go disp.Start()
-	//defer disp.Close()
 	fmt.Println("Starting task manager")
 	go tm.Start()
 	defer tm.Close()
