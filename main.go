@@ -16,8 +16,8 @@ const (
 
 func setupRoutes() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/ws/runsh/{id}", api.RunShWs).Methods("GET")
-	router.Path("/api/v1/runsh/{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.ApiRSEL)
+	router.HandleFunc("/ws/runsh/{id}", api.RunShWebsocket).Methods("GET")
+	router.Path("/api/v1/runsh/{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
 	router.PathPrefix(STATICDIR).Handler(http.StripPrefix(STATICDIR, http.FileServer(http.Dir("."+STATICDIR))))
 	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		http.ServeFile(writer, request, "./static/index.html")

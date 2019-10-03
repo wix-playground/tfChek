@@ -21,28 +21,28 @@ type TaskManager interface {
 	Close() error
 	Start() error
 	//Create task
-	TaskOfRunSh(rcs RunShCmd, ctx context.Context) (BackgroundTask, error)
-	Launch(bt BackgroundTask) error
-	RegisterCancel(task BackgroundTask, cancel func())
-	GetTask(id int) BackgroundTask
+	TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Task, error)
+	Launch(bt Task) error
+	RegisterCancel(task Task, cancel func())
+	GetTask(id int) Task
 }
 
 type TaskManagerImpl struct {
 	sequence       int
 	started        bool
 	stop           chan bool
-	threads        map[string]chan BackgroundTask
+	threads        map[string]chan Task
 	defaultWorkDir string
 	lock           sync.Mutex
 	cancel         map[int]func()
-	activeTasks    map[int]BackgroundTask
+	activeTasks    map[int]Task
 }
 
-func (tm *TaskManagerImpl) GetTask(id int) BackgroundTask {
+func (tm *TaskManagerImpl) GetTask(id int) Task {
 	return tm.activeTasks[id]
 }
 
-func (tm *TaskManagerImpl) RegisterCancel(task BackgroundTask, cancel func()) {
+func (tm *TaskManagerImpl) RegisterCancel(task Task, cancel func()) {
 	tm.cancel[task.GetId()] = cancel
 }
 
@@ -60,15 +60,15 @@ func NewTaskManager() TaskManager {
 	return &TaskManagerImpl{started: false,
 		stop:           make(chan bool),
 		sequence:       0,
-		threads:        make(map[string]chan BackgroundTask),
+		threads:        make(map[string]chan Task),
 		defaultWorkDir: "/tmp/production_42",
 		cancel:         make(map[int]func()),
-		activeTasks:    make(map[int]BackgroundTask),
+		activeTasks:    make(map[int]Task),
 	}
 }
 
 //TODO: Reimplement it Make it more specific to be able to lock by state
-func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (BackgroundTask, error) {
+func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Task, error) {
 	command, args, err := rcs.CommandArgs()
 	if err != nil {
 		return nil, err
@@ -79,14 +79,14 @@ func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Backg
 	return &t, nil
 }
 
-func (tm *TaskManagerImpl) Launch(bt BackgroundTask) error {
+func (tm *TaskManagerImpl) Launch(bt Task) error {
 	if bt.GetStatus() != OPEN {
 		return errors.New("cannot launch task in not open status")
 	}
 	if tm.threads[bt.SyncName()] == nil {
 		tm.lock.Lock()
 		if tm.threads[bt.SyncName()] == nil {
-			tm.threads[bt.SyncName()] = make(chan BackgroundTask)
+			tm.threads[bt.SyncName()] = make(chan Task)
 		}
 		tm.lock.Unlock()
 	}
@@ -131,7 +131,7 @@ func (tm *TaskManagerImpl) Start() error {
 	}
 }
 
-func (tm *TaskManagerImpl) runTasks(tasks <-chan BackgroundTask) {
+func (tm *TaskManagerImpl) runTasks(tasks <-chan Task) {
 	for t := range tasks {
 		err := t.Run()
 		if err != nil {

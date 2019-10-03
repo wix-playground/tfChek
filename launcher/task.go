@@ -20,7 +20,7 @@ func (se *StateError) Error() string {
 	return se.msg
 }
 
-type BackgroundTask interface {
+type Task interface {
 	Run() error
 	GetId() int
 	GetStdOut() io.Reader

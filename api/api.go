@@ -20,7 +20,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func RunShWs(w http.ResponseWriter, r *http.Request) {
+func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
@@ -93,7 +93,7 @@ func writeToWS(in io.Reader, ws *websocket.Conn, errc chan<- error, lock *sync.M
 	wg.Done()
 }
 
-func ApiRSEL(w http.ResponseWriter, r *http.Request) {
+func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
 	w.Header().Set("Content-Type", "application/json")
 	var cmd launcher.RunShCmd
