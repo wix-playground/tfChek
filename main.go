@@ -14,9 +14,16 @@ import (
 )
 
 const (
-	STATICDIR = "/static/"
-	PORT      = "8085"
-	APPNAME   = "tfChek"
+	STATICDIR     = "/static/"
+	WEBHOOKPATH   = "/webhook/"
+	PORT          = 8085
+	APPNAME       = "tfChek"
+	runshchunk    = "runsh/"
+	APIV1         = "/api/v1/"
+	APIRUNSH      = APIV1 + runshchunk
+	WEBSOCKETPATH = "/ws/"
+	WSRUNSH       = WEBSOCKETPATH + runshchunk
+	WEBHOOKRUNSH  = WEBHOOKPATH + runshchunk
 )
 
 func config() {
@@ -25,7 +32,7 @@ func config() {
 		log.Printf("Cannot get working directory. Error: %s", err)
 		wd = "."
 	}
-	flag.Int("port", 8085, "Port application will listen to")
+	flag.Int("port", PORT, "Port application will listen to")
 	flag.Bool("debug", false, "Print debug messages")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -47,9 +54,10 @@ func config() {
 
 func setupRoutes() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/ws/runsh/{id}", api.RunShWebsocket).Methods("GET")
-	router.Path("/api/v1/runsh/{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
-	router.Path("/api/v1/runsh/{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
+	router.HandleFunc(WSRUNSH+"{id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
+	router.Path(APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
+	router.Path(APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
+	router.Path(WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
 	router.PathPrefix(STATICDIR).Handler(http.StripPrefix(STATICDIR, http.FileServer(http.Dir("."+STATICDIR))))
 	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		http.ServeFile(writer, request, "./static/index.html")

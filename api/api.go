@@ -14,6 +14,7 @@ import (
 	"tfChek/launcher"
 	"time"
 )
+import "gopkg.in/go-playground/webhooks.v5/github"
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -109,6 +110,38 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
 	runsh(w, r, env, layer, "/tmp/production_42", 60*time.Second, &envVars)
+}
+
+func RunShWebHook(w http.ResponseWriter, r *http.Request) {
+	hook, _ := github.New(github.Options.Secret("MyGitHubSuperSecretSecrect...?"))
+	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent)
+	if err != nil {
+		if err == github.ErrEventNotFound {
+			// ok event wasn;t one of the ones asked to be parsed
+			log.Printf("Unknown event. Error: %s", err)
+		}
+	}
+
+	switch payload.(type) {
+	case github.ReleasePayload:
+		release := payload.(github.ReleasePayload)
+		// Do whatever you want from here...
+		fmt.Printf("%+v", release)
+
+	case github.PullRequestPayload:
+		pullRequest := payload.(github.PullRequestPayload)
+		// Do whatever you want from here...
+		fmt.Printf("%+v", pullRequest)
+	case github.CreatePayload:
+		createRequest := payload.(github.CreatePayload)
+		//fmt.Printf("%+v", createRequest)
+		fmt.Println(createRequest.Repository.Name)
+		fmt.Println(createRequest.Ref)
+		fmt.Println(createRequest.RefType)
+		fmt.Println(createRequest.Sender.Login)
+		fmt.Println(createRequest.Sender.Type)
+		fmt.Println(createRequest.PusherType)
+	}
 }
 
 func runsh(w http.ResponseWriter, r *http.Request, env, layer, workDir string, timeout time.Duration, envVars *map[string]string) {
