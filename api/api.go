@@ -93,13 +93,28 @@ func writeToWS(in io.Reader, ws *websocket.Conn, errc chan<- error, lock *sync.M
 	wg.Done()
 }
 
+func RunShEnv(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	env := v["Env"]
+	layer := ""
+	envVars := make(map[string]string)
+	envVars["TFRESDIF_NOPB"] = "true"
+	runsh(w, r, env, layer, "/tmp/production_42", 60*time.Second, &envVars)
+}
+
 func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
-	tm := launcher.GetTaskManager()
-	w.Header().Set("Content-Type", "application/json")
-	var cmd launcher.RunShCmd
 	v := mux.Vars(r)
 	env := v["Env"]
 	layer := v["Layer"]
+	envVars := make(map[string]string)
+	envVars["TFRESDIF_NOPB"] = "true"
+	runsh(w, r, env, layer, "/tmp/production_42", 60*time.Second, &envVars)
+}
+
+func runsh(w http.ResponseWriter, r *http.Request, env, layer, workDir string, timeout time.Duration, envVars *map[string]string) {
+	tm := launcher.GetTaskManager()
+	w.Header().Set("Content-Type", "application/json")
+	var cmd launcher.RunShCmd
 	err := r.ParseForm()
 	if err != nil {
 		em := fmt.Sprintf("Cannot parse request. Error: %s", err.Error())
@@ -114,15 +129,13 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 	no := r.Form.Get("no")
 	yes := r.Form.Get("yes")
 	cmd = launcher.RunShCmd{Layer: layer, Env: env, All: all == "true", Omit: omit == "true", Targets: targets, No: no == "true", Yes: yes == "true"}
-	envVars := make(map[string]string)
-	envVars["TFRESDIF_NOPB"] = "true"
 	ctx, cancel := context.WithTimeout(
 		context.WithValue(
 			context.WithValue(
 				context.Background(),
-				launcher.WD, "/tmp/production_42"),
+				launcher.WD, workDir),
 			launcher.ENVVARS, envVars),
-		60*time.Second)
+		timeout)
 	bt, err := tm.TaskOfRunSh(cmd, ctx)
 	tm.RegisterCancel(bt, cancel)
 	if err != nil {

@@ -37,29 +37,39 @@ type Task interface {
 }
 
 const (
-	OPEN = iota
-	SCHEDULED
-	STARTED
-	FAILED
-	TIMEOUT
-	DONE
+	OPEN       = iota //Task has been just created
+	REGISTERED        //Corresponding webhook arrived to the server
+	SCHEDULED         //Task has been accepted to the job queue
+	STARTED           //Task has been started
+	FAILED            //Task failed
+	TIMEOUT           //Task failed to finish in time
+	DONE              //Task completed
 )
 
 var DEBUG bool = false
 
+func (bti *BackgroundTaskImpl) Register() error {
+	if bti.Status == OPEN {
+		bti.Status = REGISTERED
+		return nil
+	} else {
+		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled registered, beacuse it is not open. Please make get request. Current state number is %d", bti.Status)}
+	}
+}
+
 func (bti *BackgroundTaskImpl) Schedule() error {
-	if bti.Status < SCHEDULED {
+	if bti.Status == REGISTERED {
 		bti.Status = SCHEDULED
 		return nil
 	} else {
-		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled because it is not in open state. Current state number is %d", bti.Status)}
+		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled because it has been not registered. Please wait for a webhook. Current state number is %d", bti.Status)}
 	}
 }
 
 func (bti *BackgroundTaskImpl) Start() error {
 	if bti.Status < STARTED {
 		if DEBUG {
-			log.Printf("Start of unscheduled task %s", bti.Name)
+			log.Printf("Start of task %s", bti.Name)
 		}
 		bti.Status = STARTED
 		return nil
