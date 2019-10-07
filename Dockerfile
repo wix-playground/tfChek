@@ -18,6 +18,9 @@ COPY . .
 # Build the Go app
 RUN go build -o main .
 
+#Add user
+RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500 deployer    USER deployer
+
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
