@@ -3,7 +3,9 @@ package launcher
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
+	"io"
 	"log"
 	"sync"
 	"time"
@@ -21,10 +23,12 @@ type TaskManager interface {
 	Close() error
 	Start() error
 	//Create task
-	TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Task, error)
+	AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error)
 	Launch(bt Task) error
-	RegisterCancel(task Task, cancel func())
-	GetTask(id int) Task
+	LaunchById(id int) error
+	RegisterCancel(id int, cancel func()) error
+	Get(id int) Task
+	Add(t Task) error
 }
 
 type TaskManagerImpl struct {
@@ -35,15 +39,62 @@ type TaskManagerImpl struct {
 	defaultWorkDir string
 	lock           sync.Mutex
 	cancel         map[int]func()
-	activeTasks    map[int]Task
+	tasks          map[int]Task
 }
 
-func (tm *TaskManagerImpl) GetTask(id int) Task {
-	return tm.activeTasks[id]
+func (tm *TaskManagerImpl) AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error) {
+	command, args, err := rcs.CommandArgs()
+	if err != nil {
+		return nil, err
+	}
+	outPipeReader, outPipeWriter := io.Pipe()
+	errPipeReader, errPipeWriter := io.Pipe()
+	inPipeReader, inPipeWriter := io.Pipe()
+	t := BackgroundTaskImpl{Command: command, Args: args, Context: ctx, Status: OPEN,
+		Socket: make(chan *websocket.Conn),
+		out:    outPipeReader, err: errPipeReader, in: inPipeWriter,
+		outW: outPipeWriter, errW: errPipeWriter, inR: inPipeReader,
+	}
+	err = tm.Add(&t)
+	if err != nil {
+		if DEBUG {
+			log.Printf("Cannot add task %v. Error: %s", t, err)
+		}
+	}
+	return &t, err
 }
 
-func (tm *TaskManagerImpl) RegisterCancel(task Task, cancel func()) {
-	tm.cancel[task.GetId()] = cancel
+func (tm *TaskManagerImpl) Add(t Task) error {
+	if t == nil {
+		if DEBUG {
+			log.Println("Cannot add nil task")
+		}
+		return errors.New("cannot add nil task")
+	}
+	tm.sequence++
+	t.setId(tm.sequence)
+	tm.tasks[t.GetId()] = t
+	return nil
+}
+
+func (tm *TaskManagerImpl) LaunchById(id int) error {
+	t := tm.Get(id)
+	if t == nil {
+		return errors.New(fmt.Sprintf("there is no task with id %d", id))
+	}
+	return tm.Launch(t)
+}
+
+func (tm *TaskManagerImpl) Get(id int) Task {
+	return tm.tasks[id]
+}
+
+func (tm *TaskManagerImpl) RegisterCancel(id int, cancel func()) error {
+	if tm.Get(id) == nil {
+		return errors.New(fmt.Sprintf("there is no task with id %d", id))
+	}
+	tm.cancel[id] = cancel
+	return nil
 }
 
 func GetTaskManager() TaskManager {
@@ -63,21 +114,21 @@ func NewTaskManager() TaskManager {
 		threads:        make(map[string]chan Task),
 		defaultWorkDir: "/tmp/production_42",
 		cancel:         make(map[int]func()),
-		activeTasks:    make(map[int]Task),
+		tasks:          make(map[int]Task),
 	}
 }
 
-//TODO: Reimplement it Make it more specific to be able to lock by state
-func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Task, error) {
-	command, args, err := rcs.CommandArgs()
-	if err != nil {
-		return nil, err
-	}
-	tm.sequence++
-	t := BackgroundTaskImpl{Id: tm.sequence, Command: command, Args: args, Context: ctx, Status: OPEN, Socket: make(chan *websocket.Conn)}
-	tm.activeTasks[t.Id] = &t
-	return &t, nil
-}
+//Deprecated
+//func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Task, error) {
+//	command, args, err := rcs.CommandArgs()
+//	if err != nil {
+//		return nil, err
+//	}
+//	tm.sequence++
+//	t := BackgroundTaskImpl{Id: tm.sequence, Command: command, Args: args, Context: ctx, Status: OPEN, Socket: make(chan *websocket.Conn)}
+//	tm.tasks[t.Id] = &t
+//	return &t, nil
+//}
 
 func (tm *TaskManagerImpl) Launch(bt Task) error {
 	if bt.GetStatus() != OPEN {

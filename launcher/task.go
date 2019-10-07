@@ -23,6 +23,7 @@ func (se *StateError) Error() string {
 type Task interface {
 	Run() error
 	GetId() int
+	setId(id int)
 	GetStdOut() io.Reader
 	GetStdErr() io.Reader
 	GetStdIn() io.Writer
@@ -105,16 +106,17 @@ func (bti *BackgroundTaskImpl) TimeoutFail() error {
 }
 
 type BackgroundTaskImpl struct {
-	Name    string
-	Id      int
-	Command string
-	Args    []string
-	Context context.Context
-	Status  TaskStatus
-	Socket  chan *websocket.Conn
-	out     io.Reader
-	err     io.Reader
-	in      io.Writer
+	Name       string
+	Id         int
+	Command    string
+	Args       []string
+	Context    context.Context
+	Status     TaskStatus
+	Socket     chan *websocket.Conn
+	out, err   io.Reader
+	in         io.Writer
+	inR        io.ReadCloser
+	outW, errW io.WriteCloser
 }
 
 func (bti *BackgroundTaskImpl) GetStatus() TaskStatus {
@@ -127,6 +129,10 @@ func (bti *BackgroundTaskImpl) SetStatus(status TaskStatus) {
 
 func (bti *BackgroundTaskImpl) GetId() int {
 	return bti.Id
+}
+
+func (bti *BackgroundTaskImpl) setId(id int) {
+	bti.Id = id
 }
 
 func (bti *BackgroundTaskImpl) SyncName() string {
@@ -149,15 +155,9 @@ func (bti *BackgroundTaskImpl) Run() error {
 	if bti.Status != SCHEDULED {
 		return errors.New("cannot run unscheduled task")
 	}
-	outPipeReader, outPipeWriter := io.Pipe()
-	errPipeReader, errPipeWriter := io.Pipe()
-	inPipeReader, inPipeWriter := io.Pipe()
-	bti.out = outPipeReader
-	bti.err = errPipeReader
-	bti.in = inPipeWriter
-	defer outPipeWriter.Close()
-	defer errPipeWriter.Close()
-	defer inPipeReader.Close()
+	defer bti.outW.Close()
+	defer bti.errW.Close()
+	defer bti.inR.Close()
 	//Get working directory
 	var cwd string
 	if d, ok := bti.Context.Value(WD).(string); ok {
@@ -183,11 +183,13 @@ func (bti *BackgroundTaskImpl) Run() error {
 	command.Dir = cwd
 	command.Env = sysenv
 	log.Printf("Running command and waiting for it to finish...")
-	command.Stdout = outPipeWriter
-	command.Stderr = errPipeWriter
-	command.Stdin = inPipeReader
+	command.Stdout = bti.outW
+	command.Stderr = bti.errW
+	command.Stdin = bti.inR
+
 	//I will write nothing to the command
-	err := inPipeWriter.Close()
+	//So closing stdin immediately
+	err := bti.inR.Close()
 	if err != nil {
 		log.Printf("Cannot close stdin for task id: %d", bti.Id)
 	}

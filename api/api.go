@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"tfChek/launcher"
 	"time"
@@ -39,7 +41,7 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Cannot convert parse task id")
 	}
-	bt := tm.GetTask(taskId)
+	bt := tm.Get(taskId)
 	if bt == nil {
 		log.Printf("Cannot find task by id: %d", taskId)
 		err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
@@ -113,12 +115,22 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 }
 
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
-	hook, _ := github.New(github.Options.Secret("MyGitHubSuperSecretSecrect...?"))
+	tm := launcher.GetTaskManager()
+	//hook, _ := github.New(github.Options.Secret("MyGitHubSuperSecretSecrect...?"))
+	hook, _ := github.New()
 	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
 			// ok event wasn;t one of the ones asked to be parsed
-			log.Printf("Unknown event. Error: %s", err)
+			errmsg := fmt.Sprintf("Unknown event. Error: %s", err)
+			log.Println(errmsg)
+			w.WriteHeader(404)
+			w.Write([]byte(errmsg))
+		} else {
+			errmsg := fmt.Sprintf("Got error %s", err)
+			log.Println(errmsg)
+			w.WriteHeader(400)
+			w.Write([]byte(errmsg))
 		}
 	}
 
@@ -141,6 +153,42 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(createRequest.Sender.Login)
 		fmt.Println(createRequest.Sender.Type)
 		fmt.Println(createRequest.PusherType)
+		//TODO: perform regexp validation
+		switch createRequest.RefType {
+		case "tag":
+			tagChunks := strings.Split(createRequest.Ref, "-")
+			if len(tagChunks) != 2 {
+				errmsg := fmt.Sprintf("Cannot parse tag name %s", createRequest.Ref)
+				log.Println(errmsg)
+				w.WriteHeader(400)
+				w.Write([]byte(errmsg))
+			} else {
+				if tagChunks[0] != "tfci" {
+					errmsg := fmt.Sprintf("Unsupported tag format %s. Shold be in form of /tfci-[0-9]+/", createRequest.Ref)
+					log.Println(errmsg)
+					w.WriteHeader(400)
+					w.Write([]byte(errmsg))
+				} else {
+					id, err := strconv.Atoi(tagChunks[1])
+					if err != nil {
+						errmsg := fmt.Sprintf("Cannot parse task id %s", tagChunks[1])
+						log.Println(errmsg)
+						w.WriteHeader(400)
+						w.Write([]byte(errmsg))
+					} else {
+						err := tm.LaunchById(id)
+						if err != nil {
+							errmsg := fmt.Sprintf("Cannot launch task id %d. Error: %s", id, err)
+							log.Println(errmsg)
+							w.WriteHeader(400)
+							w.Write([]byte(errmsg))
+						} else {
+							w.WriteHeader(202)
+						}
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -169,25 +217,29 @@ func runsh(w http.ResponseWriter, r *http.Request, env, layer, workDir string, t
 				launcher.WD, workDir),
 			launcher.ENVVARS, envVars),
 		timeout)
-	bt, err := tm.TaskOfRunSh(cmd, ctx)
-	tm.RegisterCancel(bt, cancel)
+	bt, err := tm.AddRunSh(cmd, ctx)
 	if err != nil {
 		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
 		_, e := w.Write([]byte(em))
 		if e != nil {
 			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
 		}
-	}
-	err = tm.Launch(bt)
-	if err != nil {
-		em := fmt.Sprintf("Cannot launch background task. Error: %s", err.Error())
-		w.WriteHeader(505)
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+	} else {
+		if viper.GetBool("debug") {
+			log.Printf("Task %d has been added", bt.GetId())
 		}
 	}
-	w.WriteHeader(202)
+	tm.RegisterCancel(bt.GetId(), cancel)
+	//err = tm.Launch(bt)
+	//if err != nil {
+	//	em := fmt.Sprintf("Cannot launch background task. Error: %s", err.Error())
+	//	w.WriteHeader(505)
+	//	_, e := w.Write([]byte(em))
+	//	if e != nil {
+	//		log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+	//	}
+	//}
+	w.WriteHeader(201)
 	_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
 	if err != nil {
 		log.Printf("Cannot write response. Error: %s", err)
