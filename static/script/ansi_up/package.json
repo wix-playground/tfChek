@@ -1,0 +1,62 @@
+{
+  "_from": "ansi_up",
+  "_id": "ansi_up@4.0.4",
+  "_inBundle": false,
+  "_integrity": "sha512-vRxC8q6QY918MbehO869biJW4tiunJdjOhi5fpY6NLOliBQlZhOkKgABJKJqH+JZfb/WfjvjN1chLWI6tODerw==",
+  "_location": "/ansi_up",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "ansi_up",
+    "name": "ansi_up",
+    "escapedName": "ansi_up",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/ansi_up/-/ansi_up-4.0.4.tgz",
+  "_shasum": "5b8c35f0b02e4476f3f18cf89c3bf48d15d054f6",
+  "_spec": "ansi_up",
+  "_where": "/Users/maksymsh",
+  "author": {
+    "name": "drudru",
+    "email": "drudru@gmail.com"
+  },
+  "bugs": {
+    "url": "http://github.com/drudru/ansi_up/issues"
+  },
+  "bundleDependencies": false,
+  "deprecated": false,
+  "description": "Convert ansi sequences in strings to colorful HTML",
+  "devDependencies": {
+    "mocha": "*",
+    "should": "*",
+    "typescript": "^3.0"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "homepage": "https://github.com/drudru/ansi_up#readme",
+  "keywords": [
+    "ansi",
+    "html"
+  ],
+  "license": "MIT",
+  "main": "./ansi_up.js",
+  "name": "ansi_up",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/drudru/ansi_up.git"
+  },
+  "scripts": {
+    "build": "make typescript",
+    "test": "make test"
+  },
+  "types": "./dist/ansi_up.d.ts",
+  "version": "4.0.4"
+}
