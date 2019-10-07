@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.wixpress.system</groupId>
     <artifactId>tfChek</artifactId>
-    <version>0.0.0</version>
+    <version>0.0.1</version>
     <developers>
         <developer>
             <name>Maksym Shkolnyi</name>
