@@ -14,16 +14,18 @@ import (
 )
 
 const (
-	STATICDIR     = "/static/"
-	WEBHOOKPATH   = "/webhook/"
-	PORT          = 8085
-	APPNAME       = "tfChek"
-	runshchunk    = "runsh/"
-	APIV1         = "/api/v1/"
-	APIRUNSH      = APIV1 + runshchunk
-	WEBSOCKETPATH = "/ws/"
-	WSRUNSH       = WEBSOCKETPATH + runshchunk
-	WEBHOOKRUNSH  = WEBHOOKPATH + runshchunk
+	STATICDIR      = "/static/"
+	WEBHOOKPATH    = "/webhook/"
+	PORT           = 8085
+	APPNAME        = "tfChek"
+	runshchunk     = "runsh/"
+	APIV1          = "/api/v1/"
+	APIRUNSH       = APIV1 + runshchunk
+	WEBSOCKETPATH  = "/ws/"
+	WSRUNSH        = WEBSOCKETPATH + runshchunk
+	WEBHOOKRUNSH   = WEBHOOKPATH + runshchunk
+	HEALTHCHECK    = "/health/is_alive"
+	READINESSCHECK = "/health/is_ready"
 )
 
 func config() {
@@ -59,6 +61,8 @@ func setupRoutes() *mux.Router {
 	router.Path(APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
 	router.Path(WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
 	router.PathPrefix(STATICDIR).Handler(http.StripPrefix(STATICDIR, http.FileServer(http.Dir("."+STATICDIR))))
+	router.Path(HEALTHCHECK).HandlerFunc(api.HealthCheck)
+	router.Path(READINESSCHECK).HandlerFunc(api.ReadinessCheck)
 	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		http.ServeFile(writer, request, "./static/index.html")
 	})

@@ -22,6 +22,7 @@ var tml sync.Mutex
 type TaskManager interface {
 	Close() error
 	Start() error
+	IsStarted() bool
 	//Create task
 	AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error)
 	Launch(bt Task) error
@@ -40,6 +41,10 @@ type TaskManagerImpl struct {
 	lock           sync.Mutex
 	cancel         map[int]func()
 	tasks          map[int]Task
+}
+
+func (tm *TaskManagerImpl) IsStarted() bool {
+	return tm.started
 }
 
 func (tm *TaskManagerImpl) AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error) {
