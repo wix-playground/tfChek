@@ -64,7 +64,8 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	go writeToWS(bt.GetStdOut(), ws, errc, lock, wg)
 	go writeToWS(bt.GetStdErr(), ws, errc, lock, wg)
 	go func(ws *websocket.Conn, errc <-chan error) {
-		err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) status is %d", bt.GetId(), bt.GetStatus())))
+		e := <-errc
+		err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Error: %s", bt.GetId(), e)))
 		if err != nil {
 			log.Println(err)
 		}
@@ -230,15 +231,6 @@ func runsh(w http.ResponseWriter, r *http.Request, env, layer, workDir string, t
 		}
 	}
 	tm.RegisterCancel(bt.GetId(), cancel)
-	//err = tm.Launch(bt)
-	//if err != nil {
-	//	em := fmt.Sprintf("Cannot launch background task. Error: %s", err.Error())
-	//	w.WriteHeader(505)
-	//	_, e := w.Write([]byte(em))
-	//	if e != nil {
-	//		log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-	//	}
-	//}
 	w.WriteHeader(201)
 	_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"sync"
@@ -41,6 +42,7 @@ type TaskManagerImpl struct {
 	lock           sync.Mutex
 	cancel         map[int]func()
 	tasks          map[int]Task
+	saveRuns       bool
 }
 
 func (tm *TaskManagerImpl) IsStarted() bool {
@@ -55,7 +57,8 @@ func (tm *TaskManagerImpl) AddRunSh(rcs RunShCmd, ctx context.Context) (Task, er
 	outPipeReader, outPipeWriter := io.Pipe()
 	errPipeReader, errPipeWriter := io.Pipe()
 	inPipeReader, inPipeWriter := io.Pipe()
-	t := BackgroundTaskImpl{Command: command, Args: args, Context: ctx, Status: OPEN,
+	t := BackgroundTaskImpl{Command: command, Args: args, Context: ctx,
+		Status: OPEN, save: tm.saveRuns,
 		Socket: make(chan *websocket.Conn),
 		out:    outPipeReader, err: errPipeReader, in: inPipeWriter,
 		outW: outPipeWriter, errW: errPipeWriter, inR: inPipeReader,
@@ -120,6 +123,7 @@ func NewTaskManager() TaskManager {
 		defaultWorkDir: "/tmp/production_42",
 		cancel:         make(map[int]func()),
 		tasks:          make(map[int]Task),
+		saveRuns:       viper.GetBool("save"),
 	}
 }
 

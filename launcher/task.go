@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"tfChek/storer"
 )
 
 type StateError struct {
@@ -117,6 +118,7 @@ type BackgroundTaskImpl struct {
 	in         io.Writer
 	inR        io.ReadCloser
 	outW, errW io.WriteCloser
+	save       bool
 }
 
 func (bti *BackgroundTaskImpl) GetStatus() TaskStatus {
@@ -186,6 +188,18 @@ func (bti *BackgroundTaskImpl) Run() error {
 	command.Stdout = bti.outW
 	command.Stderr = bti.errW
 	command.Stdin = bti.inR
+	//Ugly but I did not found a better place
+	if bti.save {
+		out, err := storer.Save2FileFromWriter(bti.Id)
+		if err != nil {
+			log.Printf("Save to file for task %d is disabled. Error: %s", bti.Id, err)
+		} else {
+			ow := io.MultiWriter(bti.outW, out)
+			eow := io.MultiWriter(bti.errW, out)
+			command.Stdout = ow
+			command.Stderr = eow
+		}
+	}
 
 	//I will write nothing to the command
 	//So closing stdin immediately
