@@ -25,34 +25,42 @@ var upgrader = websocket.Upgrader{
 
 func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
+	vars := mux.Vars(r)
+	id := vars["Id"]
+	if id == "" {
+		log.Println("Cannot run with no id")
+		w.WriteHeader(404)
+		_, err := w.Write([]byte("Cannot run with no id"))
+		if err != nil {
+			log.Printf("Cannot run task id %s Error: %s", id, err)
+		}
+		return
+	}
+	taskId, err := strconv.Atoi(id)
+	if err != nil {
+		log.Println("Cannot convert parse task id")
+		//TODO: add error handling
+	}
+
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
+		//TODO: log error and handle it
 	}
-	vars := mux.Vars(r)
-	id := vars["id"]
-	if id == "" {
-		log.Println("Cannot run with no id")
-	}
-	taskId, err := strconv.Atoi(id)
-	if err != nil {
-		log.Println("Cannot convert parse task id")
-	}
+	log.Println("Client connected to run.sh Env websocket")
 	bt := tm.Get(taskId)
 	if bt == nil {
 		log.Printf("Cannot find task by id: %d", taskId)
+		w.WriteHeader(404)
 		err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
 		if err != nil {
 			log.Printf("Cannot find task by id: %d Error: %s", taskId, err)
 		}
-		w.WriteHeader(404)
 		return
 	}
-
-	log.Println("Client connected to run.sh Env websocket")
 	errc := make(chan error)
 	err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
 	if err != nil {
@@ -112,6 +120,53 @@ func RunShEnv(w http.ResponseWriter, r *http.Request) {
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
 	runsh(w, r, env, layer, "/tmp/production_42", 60*time.Second, &envVars)
+}
+
+func Cancel(w http.ResponseWriter, r *http.Request) {
+	tm := launcher.GetTaskManager()
+	vars := mux.Vars(r)
+	id := vars["id"]
+	if id == "" {
+		log.Println("Cannot cancel with no id")
+		w.WriteHeader(404)
+		_, err := w.Write([]byte("Cannot cancel with no id"))
+		if err != nil {
+			log.Printf("Cannot cancel Error: %s", err)
+		}
+		return
+	}
+	taskId, err := strconv.Atoi(id)
+	if err != nil {
+		log.Println("Cannot convert parse task id")
+		w.WriteHeader(400)
+		_, err := w.Write([]byte(fmt.Sprintf("Cannot convert parse task id %s", id)))
+		if err != nil {
+			log.Printf("Cannot cancel Error: %s", err)
+		}
+
+		return
+	}
+	bt := tm.Get(taskId)
+	if bt == nil {
+		log.Printf("Cannot find task by id: %d", taskId)
+		w.WriteHeader(404)
+		_, err := w.Write([]byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
+		if err != nil {
+			log.Printf("Cannot find task by id: %d Error: %s", taskId, err)
+		}
+		return
+	}
+	err = tm.Cancel(bt.GetId())
+	if err != nil {
+		log.Printf("Cannot cancel task by id: %d Error: %s", taskId, err)
+		w.WriteHeader(404)
+		_, err := w.Write([]byte(fmt.Sprintf("Cannot cancel task by id: %d", taskId)))
+		if err != nil {
+			log.Printf("Cannot find cancel by id: %d Error: %s", taskId, err)
+		}
+		return
+	}
+	w.WriteHeader(202)
 }
 
 func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {

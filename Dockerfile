@@ -16,7 +16,7 @@ RUN go mod download
 COPY . .
 
 # Build the Go app
-RUN go build -o main .
+RUN go build -o tfChek .
 
 #Add user
 RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500 deployer
@@ -26,5 +26,7 @@ USER deployer
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./main"]
+#CMD ["./tfChek"]
+
+ENTRYPOINT [ "./tfChek.sh" ]
 

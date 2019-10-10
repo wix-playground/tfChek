@@ -118,7 +118,17 @@
           let last = null;
 
           function cancel() {
-            console.log("Not implemented yet")
+            let id = urlParams.get('id');
+            let xmlHttp = new XMLHttpRequest();
+            xmlHttp.onreadystatechange = function() {
+              if (xmlHttp.readyState == 4 && xmlHttp.status == 202)
+                console.log("Task "+id+" has been marked for deletion");
+            }
+            if (xmlHttp.readyState == 4 && xmlHttp.status >= 400){
+              console.log("Failed to cancel task "+id);
+          }
+            xmlHttp.open("GET", "/api/v1/cancel/"+id, true); // true for asynchronous
+            xmlHttp.send(null);
           }
 
           function copyText() {

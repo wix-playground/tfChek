@@ -21,6 +21,7 @@ const (
 	runshchunk     = "runsh/"
 	APIV1          = "/api/v1/"
 	APIRUNSH       = APIV1 + runshchunk
+	APICANCEL      = APIV1 + "cancel/"
 	WEBSOCKETPATH  = "/ws/"
 	WSRUNSH        = WEBSOCKETPATH + runshchunk
 	WEBHOOKRUNSH   = WEBHOOKPATH + runshchunk
@@ -43,10 +44,12 @@ func config() {
 	viper.BindPFlags(pflag.CommandLine)
 	viper.SetDefault("working_direrctory", wd)
 	viper.SetDefault("debug", false)
+	viper.SetDefault("qlength", 10)
 	viper.SetEnvPrefix("TFCHEK")
 	viper.AutomaticEnv()
 	viper.SetConfigName(APPNAME)
-	viper.AddConfigPath("/etc/" + APPNAME)
+	viper.AddConfigPath("/opt/wix/" + APPNAME + "/etc/")
+	viper.AddConfigPath("/configs/" + APPNAME)
 	viper.AddConfigPath("$HOME/." + APPNAME)
 	viper.AddConfigPath(".")
 	viper.ReadInConfig()
@@ -58,9 +61,10 @@ func config() {
 
 func setupRoutes() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc(WSRUNSH+"{id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
+	router.HandleFunc(WSRUNSH+"{Id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
 	router.Path(APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
 	router.Path(APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
+	router.Path(APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
 	router.Path(WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
 	router.PathPrefix(STATICDIR).Handler(http.StripPrefix(STATICDIR, http.FileServer(http.Dir("."+STATICDIR))))
 	router.Path(HEALTHCHECK).HandlerFunc(api.HealthCheck)

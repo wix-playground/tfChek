@@ -28,9 +28,10 @@ type TaskManager interface {
 	AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error)
 	Launch(bt Task) error
 	LaunchById(id int) error
-	RegisterCancel(id int, cancel func()) error
+	RegisterCancel(id int, cancel context.CancelFunc) error
 	Get(id int) Task
 	Add(t Task) error
+	Cancel(id int) error
 }
 
 type TaskManagerImpl struct {
@@ -40,9 +41,19 @@ type TaskManagerImpl struct {
 	threads        map[string]chan Task
 	defaultWorkDir string
 	lock           sync.Mutex
-	cancel         map[int]func()
+	cancel         map[int]context.CancelFunc
 	tasks          map[int]Task
 	saveRuns       bool
+}
+
+func (tm *TaskManagerImpl) Cancel(id int) error {
+	cancel := tm.cancel[id]
+	if cancel == nil {
+		return errors.New(fmt.Sprintf("task id: $d has no registered cancel function"))
+	}
+	log.Printf("Task id %d is set to be cancelled")
+	cancel()
+	return nil
 }
 
 func (tm *TaskManagerImpl) IsStarted() bool {
@@ -97,7 +108,7 @@ func (tm *TaskManagerImpl) Get(id int) Task {
 	return tm.tasks[id]
 }
 
-func (tm *TaskManagerImpl) RegisterCancel(id int, cancel func()) error {
+func (tm *TaskManagerImpl) RegisterCancel(id int, cancel context.CancelFunc) error {
 	if tm.Get(id) == nil {
 		return errors.New(fmt.Sprintf("there is no task with id %d", id))
 	}
@@ -119,25 +130,13 @@ func NewTaskManager() TaskManager {
 	return &TaskManagerImpl{started: false,
 		stop:           make(chan bool),
 		sequence:       0,
-		threads:        make(map[string]chan Task),
+		threads:        make(map[string]chan Task, viper.GetInt("qlength")),
 		defaultWorkDir: "/tmp/production_42",
-		cancel:         make(map[int]func()),
+		cancel:         make(map[int]context.CancelFunc),
 		tasks:          make(map[int]Task),
 		saveRuns:       viper.GetBool("save"),
 	}
 }
-
-//Deprecated
-//func (tm *TaskManagerImpl) TaskOfRunSh(rcs RunShCmd, ctx context.Context) (Task, error) {
-//	command, args, err := rcs.CommandArgs()
-//	if err != nil {
-//		return nil, err
-//	}
-//	tm.sequence++
-//	t := BackgroundTaskImpl{Id: tm.sequence, Command: command, Args: args, Context: ctx, Status: OPEN, Socket: make(chan *websocket.Conn)}
-//	tm.tasks[t.Id] = &t
-//	return &t, nil
-//}
 
 func (tm *TaskManagerImpl) Launch(bt Task) error {
 	if bt.GetStatus() != OPEN {
