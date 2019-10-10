@@ -15,6 +15,7 @@
           }
           body {
               background: #131d2c;
+            margin: 0;
           }
       </style>
       <style>
@@ -31,17 +32,72 @@
               height: 1px;
           }
         #messages {
-          background: red;
-          color: black;
+          background: #131d2c;
+          color: rgba(183, 0, 0, 0.81);
         }
 
       </style>
+    <style>
+
+      #bar {
+        overflow: hidden;
+        background-color: #333;
+      }
+
+      #bar a {
+        float: right;
+        display: block;
+        color: #f2f2f2;
+        text-align: center;
+        padding: 14px;
+        text-decoration: none;
+
+      }
+      #copy {
+        background-color: rgba(163, 163, 28, 0.98);
+      }
+      #cancel {
+        background-color: rgba(163, 59, 67, 0.98);
+      }
+
+      #bar div {
+        color: yellow;
+        font-size: 25px;
+        text-align: center;
+        padding: 10px;
+        float: left;
+      }
+      #copy:hover {
+        background-color: yellow;
+        color: black;
+      }
+
+      #cancel:hover {
+        background-color: red;
+        color: black;
+      }
+
+
+      .content {
+        padding: 16px;
+      }
+
+      .sticky {
+        position: fixed;
+        top: 0;
+        width: 100%;
+      }
+
+      .sticky + .content {
+        padding-top: 60px;
+      }
+    </style>
   </head>
   <body>
     <script src="/static/script/ansi_up/ansi_up.js" type="text/javascript"></script>
     <div id="messages"></div>
 
-    <script>
+    <script type="application/javascript">
         function start_scroll_down() {
             scroll = setInterval(function(){ window.scrollBy(0, 1000); console.log('start');}, 1500);
         }
@@ -60,6 +116,10 @@
           let socket = new WebSocket("ws://127.0.0.1:8085/ws/runsh/"+urlParams.get('id'));
 
           let last = null;
+
+          function cancel() {
+            console.log("Not implemented yet")
+          }
 
           function copyText() {
             let text = "";
@@ -132,11 +192,30 @@
 
     </script>
     <div id="bar">
-      <button id="copy" onclick="copyText()">Copy</button>
+      <div><span>tfChek</span></div>
+      <a id="cancel" onclick="cancel()" href="javascript:void(0)">Cancel</a>
+      <a id="copy" onclick="copyText()" href="javascript:void(0)">Copy</a>
     </div>
+    <div class="content">
     <div id="output">
         <div id="anchor"></div>
     </div>
+    </div>
+    <script type="application/javascript">
+
+      const bar = document.getElementById("bar");
+      const sticky = bar.offsetTop;
+      function stickTheBar() {
+        if (window.pageYOffset >= sticky) {
+          bar.classList.add("sticky");
+        } else {
+          bar.classList.remove("sticky");
+        }
+      }
+      window.onscroll = function () {
+        stickTheBar();
+      }
+    </script>
   </body>
 </html>
 
