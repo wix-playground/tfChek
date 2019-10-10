@@ -14,7 +14,7 @@
               color: beige;
           }
           body {
-              background: black;
+              background: #131d2c;
           }
       </style>
       <style>
@@ -59,7 +59,34 @@
         if (urlParams.has('id')) {
           let socket = new WebSocket("ws://127.0.0.1:8085/ws/runsh/"+urlParams.get('id'));
 
-          let last = null
+          let last = null;
+
+          function copyText() {
+            let text = "";
+            let output = document.getElementById("output");
+            let textArea = document.createElement("textarea");
+            textArea.value = output.innerText;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+              let successful = document.execCommand("copy");
+              let message = successful ? 'successful' : 'unsuccessful';
+              console.log("Copying was " + message);
+            } catch (error) {
+              console.error("Unable to copy", error);
+            }
+            //clearSelection()
+            document.body.removeChild(textArea);
+          }
+
+          function clearSelection(){
+            if (window.getSelection()) {
+              window.getSelection().removeAllRanges();
+            }  else if (document.getSelection()) {
+              document.getSelection().empty();
+            }
+          }
 
           function writeToScreen(message) {
             let output = document.getElementById("output");
@@ -76,8 +103,7 @@
             } else {
               pre.innerHTML = msg;
               last = pre
-              // output.appendChild(pre);
-              console.log("New line: " + msg)
+              // console.log("New line: " + msg)
               output.insertBefore(pre, anchor)
               window.scrollTo(0, output.scrollHeight)
             }
@@ -105,7 +131,9 @@
         }
 
     </script>
-
+    <div id="bar">
+      <button id="copy" onclick="copyText()">Copy</button>
+    </div>
     <div id="output">
         <div id="anchor"></div>
     </div>

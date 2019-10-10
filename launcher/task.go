@@ -48,6 +48,27 @@ const (
 	DONE              //Task completed
 )
 
+func GetStatusString(status TaskStatus) string {
+	switch status {
+	case OPEN:
+		return "open"
+	case REGISTERED:
+		return "registered"
+	case SCHEDULED:
+		return "scheduled"
+	case STARTED:
+		return "started"
+	case FAILED:
+		return "failed"
+	case TIMEOUT:
+		return "timeout"
+	case DONE:
+		return "done"
+	default:
+		return "unknown"
+	}
+}
+
 var DEBUG bool = false
 
 func (bti *BackgroundTaskImpl) Register() error {
@@ -187,7 +208,8 @@ func (bti *BackgroundTaskImpl) Run() error {
 	log.Printf("Running command and waiting for it to finish...")
 	command.Stdout = bti.outW
 	command.Stderr = bti.errW
-	command.Stdin = bti.inR
+	//command.Stdin = bti.inR
+	command.Stdin = nil
 	//Ugly but I did not found a better place
 	if bti.save {
 		out, err := storer.Save2FileFromWriter(bti.Id)

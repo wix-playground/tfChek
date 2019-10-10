@@ -54,7 +54,7 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Client connected to run.sh Env websocket")
 	errc := make(chan error)
-	err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) status is %d", bt.GetId(), bt.GetStatus())))
+	err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
 	if err != nil {
 		log.Println(err)
 	}
@@ -65,10 +65,18 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	go writeToWS(bt.GetStdErr(), ws, errc, lock, wg)
 	go func(ws *websocket.Conn, errc <-chan error) {
 		e := <-errc
-		err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Error: %s", bt.GetId(), e)))
-		if err != nil {
-			log.Println(err)
+		if e != nil {
+			err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s Error: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()), e)))
+			if err != nil {
+				log.Println(err)
+			}
+		} else {
+			err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
+			if err != nil {
+				log.Println(err)
+			}
 		}
+
 	}(ws, errc)
 	wg.Wait()
 	close(errc)
