@@ -14,3 +14,5 @@ Changelog
 *0.0.3*
 > Can copy task output
 
+*0.0.4*
+> Add buttons bar
