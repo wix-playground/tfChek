@@ -10,4 +10,7 @@ Changelog
 *0.0.2*
 >This version and all prior versions does not have any working version deployed
  It supports basic operations only. Nothing is well tested.
->
+
+*0.0.3*
+> Can copy task output
+
