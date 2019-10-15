@@ -23,7 +23,7 @@ RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500
 USER deployer
 
 # Expose port 8080 to the outside world
-EXPOSE 8080
+EXPOSE 8085
 
 # Command to run the executable
 #CMD ["./tfChek"]

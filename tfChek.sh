@@ -2,6 +2,7 @@
 
 TFCHEK_PORT=$PORT
 export TFCHEK_PORT
-
-source /configs/tfChek
-./main
+if [ -r "/configs/tfChek" ]; then
+  source /configs/tfChek
+fi
+./tfChek

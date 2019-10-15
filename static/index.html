@@ -113,7 +113,7 @@
         console.log("Attempting Connection...");
         const ansi_up = new AnsiUp();
         if (urlParams.has('id')) {
-          let socket = new WebSocket("ws://127.0.0.1:8085/ws/runsh/"+urlParams.get('id'));
+          let socket = new WebSocket("ws://"+location.hostname+":"+location.port+"/ws/runsh/"+urlParams.get('id'));
 
           let last = null;
 

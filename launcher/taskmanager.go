@@ -130,7 +130,7 @@ func NewTaskManager() TaskManager {
 	return &TaskManagerImpl{started: false,
 		stop:           make(chan bool),
 		sequence:       0,
-		threads:        make(map[string]chan Task, viper.GetInt("qlength")),
+		threads:        make(map[string]chan Task),
 		defaultWorkDir: "/tmp/production_42",
 		cancel:         make(map[int]context.CancelFunc),
 		tasks:          make(map[int]Task),
@@ -145,7 +145,7 @@ func (tm *TaskManagerImpl) Launch(bt Task) error {
 	if tm.threads[bt.SyncName()] == nil {
 		tm.lock.Lock()
 		if tm.threads[bt.SyncName()] == nil {
-			tm.threads[bt.SyncName()] = make(chan Task)
+			tm.threads[bt.SyncName()] = make(chan Task, viper.GetInt("qlength"))
 		}
 		tm.lock.Unlock()
 	}

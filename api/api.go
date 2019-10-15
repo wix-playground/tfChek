@@ -3,6 +3,7 @@ package api
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -10,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -119,7 +121,8 @@ func RunShEnv(w http.ResponseWriter, r *http.Request) {
 	layer := ""
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
-	runsh(w, r, env, layer, "/tmp/production_42", 60*time.Second, &envVars)
+
+	runsh(w, r, env, layer, viper.GetString("working_direrctory"), time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
 }
 
 func Cancel(w http.ResponseWriter, r *http.Request) {
@@ -175,14 +178,28 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 	layer := v["Layer"]
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
-	runsh(w, r, env, layer, "/tmp/production_42", 60*time.Second, &envVars)
+	runsh(w, r, env, layer, viper.GetString("working_direrctory"), time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
 }
 
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
-	//hook, _ := github.New(github.Options.Secret("MyGitHubSuperSecretSecrect...?"))
-	hook, _ := github.New()
-	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent)
+	hook, _ := github.New(github.Options.Secret("t"))
+
+	//TODO: remove me till there
+	//rb, err := ioutil.ReadAll(r.Body)
+	//if err != nil {
+	//	log.Printf("Cannot read request. Error: %s", err)
+	//}
+	//bytes, err := json.MarshalIndent(rb, "WEBHOOK:\t", "\t")
+	//if err != nil {
+	//	log.Printf("Cannot marshal webhook. Error: %s", err)
+	//} else {
+	//	log.Printf("Got webhook:\n %s",bytes)
+	//}
+	// Till here
+
+	//hook, _ := github.New()
+	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent, github.PushEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
 			// ok event wasn;t one of the ones asked to be parsed
@@ -190,13 +207,27 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 			log.Println(errmsg)
 			w.WriteHeader(404)
 			w.Write([]byte(errmsg))
+			return
 		} else {
+			if e, ok := err.(*json.SyntaxError); ok {
+				log.Printf("syntax error at byte offset %d", e.Offset)
+			}
 			errmsg := fmt.Sprintf("Got error %s", err)
 			log.Println(errmsg)
 			w.WriteHeader(400)
 			w.Write([]byte(errmsg))
+			return
 		}
 	}
+
+	//TODO: remove me till there
+	bytes, err := json.MarshalIndent(payload, "WEBHOOK:\t", "\t")
+	if err != nil {
+		log.Printf("Cannot marshal webhook. Error: %s", err)
+	} else {
+		log.Printf("Got webhook:\n %s", bytes)
+	}
+	// Till here
 
 	switch payload.(type) {
 	case github.ReleasePayload:
@@ -208,6 +239,23 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 		pullRequest := payload.(github.PullRequestPayload)
 		// Do whatever you want from here...
 		fmt.Printf("%+v", pullRequest)
+	case github.PushPayload:
+		pushPayload := payload.(github.PushPayload)
+		if pushPayload.Created {
+			log.Printf("It looks like I received a new branch")
+			branchName := strings.ReplaceAll(pushPayload.Ref, "refs/heads/", "")
+			matched, err := regexp.Match("^tfci-[0-9]+", []byte(branchName))
+			if err != nil {
+				log.Printf("Cannot match against regex")
+			}
+			if matched {
+				log.Printf("I have to process this event")
+			} else {
+				log.Printf("Skipping this push event")
+			}
+		} else {
+			log.Printf("It looks like I received new commit in existing branch")
+		}
 	case github.CreatePayload:
 		createRequest := payload.(github.CreatePayload)
 		//fmt.Printf("%+v", createRequest)

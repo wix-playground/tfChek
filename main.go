@@ -45,6 +45,7 @@ func config() {
 	viper.SetDefault("working_direrctory", wd)
 	viper.SetDefault("debug", false)
 	viper.SetDefault("qlength", 10)
+	viper.SetDefault("timeout", 300)
 	viper.SetEnvPrefix("TFCHEK")
 	viper.AutomaticEnv()
 	viper.SetConfigName(APPNAME)
@@ -84,5 +85,5 @@ func main() {
 	defer tm.Close()
 	fmt.Println("Starting server")
 	router := setupRoutes()
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", viper.Get("port")), router))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("port")), router))
 }
