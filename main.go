@@ -42,7 +42,7 @@ func config() {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 	viper.BindPFlags(pflag.CommandLine)
-	viper.SetDefault("working_direrctory", wd)
+	viper.SetDefault(api.RUNSHWD, wd)
 	viper.SetDefault("debug", false)
 	viper.SetDefault("qlength", 10)
 	viper.SetDefault("timeout", 300)

@@ -68,10 +68,11 @@ func (tm *TaskManagerImpl) AddRunSh(rcs RunShCmd, ctx context.Context) (Task, er
 	outPipeReader, outPipeWriter := io.Pipe()
 	errPipeReader, errPipeWriter := io.Pipe()
 	inPipeReader, inPipeWriter := io.Pipe()
-	t := BackgroundTaskImpl{Command: command, Args: args, Context: ctx,
+	t := RunShTask{Command: command, Args: args, Context: ctx,
 		Status: OPEN, save: tm.saveRuns,
-		Socket: make(chan *websocket.Conn),
-		out:    outPipeReader, err: errPipeReader, in: inPipeWriter,
+		Socket:    make(chan *websocket.Conn),
+		StateLock: fmt.Sprintf("%s/%s", rcs.Env, rcs.Layer),
+		out:       outPipeReader, err: errPipeReader, in: inPipeWriter,
 		outW: outPipeWriter, errW: errPipeWriter, inR: inPipeReader,
 	}
 	err = tm.Add(&t)
@@ -128,13 +129,12 @@ func GetTaskManager() TaskManager {
 
 func NewTaskManager() TaskManager {
 	return &TaskManagerImpl{started: false,
-		stop:           make(chan bool),
-		sequence:       0,
-		threads:        make(map[string]chan Task),
-		defaultWorkDir: "/tmp/production_42",
-		cancel:         make(map[int]context.CancelFunc),
-		tasks:          make(map[int]Task),
-		saveRuns:       viper.GetBool("save"),
+		stop:     make(chan bool),
+		sequence: 0,
+		threads:  make(map[string]chan Task),
+		cancel:   make(map[int]context.CancelFunc),
+		tasks:    make(map[int]Task),
+		saveRuns: viper.GetBool("save"),
 	}
 }
 

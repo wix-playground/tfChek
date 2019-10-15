@@ -20,6 +20,8 @@ import (
 )
 import "gopkg.in/go-playground/webhooks.v5/github"
 
+const RUNSHWD = "runsh_wd"
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -122,7 +124,7 @@ func RunShEnv(w http.ResponseWriter, r *http.Request) {
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
 
-	runsh(w, r, env, layer, viper.GetString("working_direrctory"), time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
+	runsh(w, r, env, layer, viper.GetString(RUNSHWD), time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
 }
 
 func Cancel(w http.ResponseWriter, r *http.Request) {
@@ -178,7 +180,7 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 	layer := v["Layer"]
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
-	runsh(w, r, env, layer, viper.GetString("working_direrctory"), time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
+	runsh(w, r, env, layer, viper.GetString(RUNSHWD), time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
 }
 
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
@@ -230,19 +232,9 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 	// Till here
 
 	switch payload.(type) {
-	case github.ReleasePayload:
-		release := payload.(github.ReleasePayload)
-		// Do whatever you want from here...
-		fmt.Printf("%+v", release)
-
-	case github.PullRequestPayload:
-		pullRequest := payload.(github.PullRequestPayload)
-		// Do whatever you want from here...
-		fmt.Printf("%+v", pullRequest)
 	case github.PushPayload:
 		pushPayload := payload.(github.PushPayload)
 		if pushPayload.Created {
-			log.Printf("It looks like I received a new branch")
 			branchName := strings.ReplaceAll(pushPayload.Ref, "refs/heads/", "")
 			matched, err := regexp.Match("^tfci-[0-9]+", []byte(branchName))
 			if err != nil {
@@ -250,12 +242,29 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 			}
 			if matched {
 				log.Printf("I have to process this event")
-			} else {
-				log.Printf("Skipping this push event")
+				chunks := strings.Split(branchName, "-")
+				taskId, err := strconv.Atoi(chunks[1])
+				if err != nil {
+					errmsg := fmt.Sprintf("Cannot parse task id %s", chunks[1])
+					log.Println(errmsg)
+					w.WriteHeader(400)
+					w.Write([]byte(errmsg))
+					return
+				} else {
+					err := tm.LaunchById(taskId)
+					if err != nil {
+						errmsg := fmt.Sprintf("Cannot launch task id %d. Error: %s", taskId, err)
+						log.Println(errmsg)
+						w.WriteHeader(400)
+						w.Write([]byte(errmsg))
+					} else {
+						w.WriteHeader(202)
+					}
+				}
 			}
-		} else {
-			log.Printf("It looks like I received new commit in existing branch")
+			w.WriteHeader(202)
 		}
+	//TODO: remove this
 	case github.CreatePayload:
 		createRequest := payload.(github.CreatePayload)
 		//fmt.Printf("%+v", createRequest)
