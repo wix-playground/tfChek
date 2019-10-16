@@ -39,6 +39,7 @@ func config() {
 	flag.Bool("debug", false, "Print debug messages")
 	flag.String("outdir", "out", "Directory to save output of the task runs")
 	flag.Bool("save", true, "Save tasks output to the files in outdir")
+	flag.String("token", "", "GitHub API access token")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 	viper.BindPFlags(pflag.CommandLine)
