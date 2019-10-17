@@ -9,7 +9,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"tfChek/api"
+	"tfChek/github"
 	"tfChek/launcher"
 )
 
@@ -47,6 +49,7 @@ func config() {
 	viper.SetDefault("debug", false)
 	viper.SetDefault("qlength", 10)
 	viper.SetDefault("timeout", 300)
+	viper.SetDefault("repo_owner", "wix-system")
 	viper.SetEnvPrefix("TFCHEK")
 	viper.AutomaticEnv()
 	viper.SetConfigName(APPNAME)
@@ -78,12 +81,26 @@ func setupRoutes() *mux.Router {
 
 }
 
-func main() {
+func initialize() {
+	//Prepare configuration
 	config()
+	//Start GitHub API manager
+	pchnk := strings.Split(strings.TrimRight(viper.GetString(api.RUNSHWD), "/"), "/")
+	repoName := pchnk[len(pchnk)-1]
+	repoOwner := viper.GetString("repo_owner")
+	token := viper.GetString("token")
+	github.InitManager(repoName, repoOwner, token)
+	github.GetManager().Start()
+	//Start task manager
 	tm := launcher.GetTaskManager()
 	fmt.Println("Starting task manager")
 	go tm.Start()
-	defer tm.Close()
+}
+
+func main() {
+	initialize()
+	defer launcher.GetTaskManager().Close()
+	defer github.GetManager().Close()
 	fmt.Println("Starting server")
 	router := setupRoutes()
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("port")), router))

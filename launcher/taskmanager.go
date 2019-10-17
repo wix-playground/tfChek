@@ -123,6 +123,7 @@ func GetTaskManager() TaskManager {
 		if tm == nil {
 			tm = NewTaskManager()
 		}
+		tml.Unlock()
 	}
 	return tm
 }
@@ -166,6 +167,12 @@ func (tm *TaskManagerImpl) Close() error {
 }
 
 func (tm *TaskManagerImpl) Start() error {
+	go tm.starter()
+	//Perhaps I should handle errors...
+	return nil
+}
+
+func (tm *TaskManagerImpl) starter() error {
 	if tm.started {
 		return errors.New("dispatcher already has been started")
 	}

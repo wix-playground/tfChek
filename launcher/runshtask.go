@@ -9,8 +9,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"tfChek/github"
 	"tfChek/storer"
 )
+
+const TASKPREFIX = "tfci-"
 
 func (rst *RunShTask) Register() error {
 	if rst.Status == OPEN {
@@ -44,6 +47,11 @@ func (rst *RunShTask) Start() error {
 func (rst *RunShTask) Done() error {
 	if rst.Status == STARTED {
 		rst.Status = DONE
+		manager := github.GetManager()
+		if manager != nil {
+			c := manager.GetChannel()
+			c <- fmt.Sprintf("%s%d", TASKPREFIX, rst.Id)
+		}
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be done, because it has been not started. Current state number is %d", rst.Status)}
@@ -175,18 +183,30 @@ func (rst *RunShTask) Run() error {
 		log.Printf("Cannot close stdin for task id: %d", rst.Id)
 	}
 
-	rst.Status = STARTED
+	err = rst.Start()
+	if err != nil {
+		log.Printf("Cannot change task state. Error: %s", err)
+	}
 	err = command.Run()
 	if err != nil {
 		if err.Error() == "context deadline exceeded" {
 			log.Printf("Command timed out error: %v", err)
-			rst.Status = TIMEOUT
+			err = rst.TimeoutFail()
+			if err != nil {
+				log.Printf("Cannot change task state. Error: %s", err)
+			}
 		} else {
 			log.Printf("Command finished with error: %v", err)
-			rst.Status = FAILED
+			err = rst.Fail()
+			if err != nil {
+				log.Printf("Cannot change task state. Error: %s", err)
+			}
 		}
 	} else {
-		rst.Status = DONE
+		err = rst.Done()
+		if err != nil {
+			log.Printf("Cannot change task state. Error: %s", err)
+		}
 		log.Println("Command completed successfully")
 	}
 	return err

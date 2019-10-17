@@ -20,7 +20,7 @@ import (
 )
 import "gopkg.in/go-playground/webhooks.v5/github"
 
-const RUNSHWD = "runsh_wd"
+const RUNSHWD = "repopath"
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -186,25 +186,10 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
 	hook, _ := github.New(github.Options.Secret("t"))
-
-	//TODO: remove me till there
-	//rb, err := ioutil.ReadAll(r.Body)
-	//if err != nil {
-	//	log.Printf("Cannot read request. Error: %s", err)
-	//}
-	//bytes, err := json.MarshalIndent(rb, "WEBHOOK:\t", "\t")
-	//if err != nil {
-	//	log.Printf("Cannot marshal webhook. Error: %s", err)
-	//} else {
-	//	log.Printf("Got webhook:\n %s",bytes)
-	//}
-	// Till here
-
-	//hook, _ := github.New()
-	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent, github.PushEvent)
+	payload, err := hook.Parse(r, github.PushEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
-			// ok event wasn;t one of the ones asked to be parsed
+			// ok event wasn't one of the ones asked to be parsed
 			errmsg := fmt.Sprintf("Unknown event. Error: %s", err)
 			log.Println(errmsg)
 			w.WriteHeader(404)
@@ -222,21 +207,19 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//TODO: remove me till there
-	bytes, err := json.MarshalIndent(payload, "WEBHOOK:\t", "\t")
-	if err != nil {
-		log.Printf("Cannot marshal webhook. Error: %s", err)
-	} else {
-		log.Printf("Got webhook:\n %s", bytes)
-	}
-	// Till here
+	//bytes, err := json.MarshalIndent(payload, "WEBHOOK:\t", "\t")
+	//if err != nil {
+	//	log.Printf("Cannot marshal webhook. Error: %s", err)
+	//} else {
+	//	log.Printf("Got webhook:\n %s", bytes)
+	//}
 
 	switch payload.(type) {
 	case github.PushPayload:
 		pushPayload := payload.(github.PushPayload)
 		if pushPayload.Created {
 			branchName := strings.ReplaceAll(pushPayload.Ref, "refs/heads/", "")
-			matched, err := regexp.Match("^tfci-[0-9]+", []byte(branchName))
+			matched, err := regexp.Match("^"+launcher.TASKPREFIX+"[0-9]+", []byte(branchName))
 			if err != nil {
 				log.Printf("Cannot match against regex")
 			}
@@ -261,53 +244,8 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(202)
 					}
 				}
-			}
-			w.WriteHeader(202)
-		}
-	//TODO: remove this
-	case github.CreatePayload:
-		createRequest := payload.(github.CreatePayload)
-		//fmt.Printf("%+v", createRequest)
-		fmt.Println(createRequest.Repository.Name)
-		fmt.Println(createRequest.Ref)
-		fmt.Println(createRequest.RefType)
-		fmt.Println(createRequest.Sender.Login)
-		fmt.Println(createRequest.Sender.Type)
-		fmt.Println(createRequest.PusherType)
-		//TODO: perform regexp validation
-		switch createRequest.RefType {
-		case "tag":
-			tagChunks := strings.Split(createRequest.Ref, "-")
-			if len(tagChunks) != 2 {
-				errmsg := fmt.Sprintf("Cannot parse tag name %s", createRequest.Ref)
-				log.Println(errmsg)
-				w.WriteHeader(400)
-				w.Write([]byte(errmsg))
 			} else {
-				if tagChunks[0] != "tfci" {
-					errmsg := fmt.Sprintf("Unsupported tag format %s. Shold be in form of /tfci-[0-9]+/", createRequest.Ref)
-					log.Println(errmsg)
-					w.WriteHeader(400)
-					w.Write([]byte(errmsg))
-				} else {
-					id, err := strconv.Atoi(tagChunks[1])
-					if err != nil {
-						errmsg := fmt.Sprintf("Cannot parse task id %s", tagChunks[1])
-						log.Println(errmsg)
-						w.WriteHeader(400)
-						w.Write([]byte(errmsg))
-					} else {
-						err := tm.LaunchById(id)
-						if err != nil {
-							errmsg := fmt.Sprintf("Cannot launch task id %d. Error: %s", id, err)
-							log.Println(errmsg)
-							w.WriteHeader(400)
-							w.Write([]byte(errmsg))
-						} else {
-							w.WriteHeader(202)
-						}
-					}
-				}
+				w.WriteHeader(200)
 			}
 		}
 	}

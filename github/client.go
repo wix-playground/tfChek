@@ -7,6 +7,13 @@ import (
 )
 import "golang.org/x/oauth2"
 
+type GitHubClient interface {
+	CreatePR(branch string) (*int, error)
+	RequestReview(number int, reviewers *[]string) error
+	Review(number int, comment string) error
+	Close(number int) error
+}
+
 type ClientRunSH struct {
 	Repository string
 	Owner      string
@@ -73,15 +80,12 @@ func (c *ClientRunSH) Close(number int) error {
 		return err
 	}
 	pullRequest.State = github.String("closed")
-	oref := pullRequest.Base.GetRef()
 	pullRequest.Base = nil
 	review, _, err := c.client.PullRequests.Edit(c.context, c.Owner, c.Repository, number, pullRequest)
 	if err != nil {
 		log.Printf("Cannot close the pull request %d Error: %s", number, err)
 		return err
 	}
-	cref := review.Base.GetRef()
-	log.Printf("Base was %s and become %s", oref, cref)
 	log.Printf("PR #%d has been closed %s", number, review.GetHTMLURL())
 	return nil
 }
