@@ -50,6 +50,7 @@ func config() {
 	viper.SetDefault("qlength", 10)
 	viper.SetDefault("timeout", 300)
 	viper.SetDefault("repo_owner", "wix-system")
+	viper.SetDefault("webhook_secret", "notAsecretAtAll:)")
 	viper.SetEnvPrefix("TFCHEK")
 	viper.AutomaticEnv()
 	viper.SetConfigName(APPNAME)

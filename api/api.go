@@ -185,7 +185,7 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
-	hook, _ := github.New(github.Options.Secret("t"))
+	hook, _ := github.New(github.Options.Secret(viper.GetString("webhook_secret")))
 	payload, err := hook.Parse(r, github.PushEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
@@ -249,6 +249,22 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+func fetch_authors(payload github.PushPayload) *[]string {
+	author_usernames := make(map[string]struct{}, 0)
+	if payload != nil {
+		for _, commit := range payload.Commits {
+			author_usernames[commit.Author.Username] = struct{}{}
+		}
+	}
+	res := make([]string, len(author_usernames))
+	n := 0
+	for i, _ := range author_usernames {
+		res[n] = i
+		n++
+	}
+	return &res
 }
 
 func runsh(w http.ResponseWriter, r *http.Request, env, layer, workDir string, timeout time.Duration, envVars *map[string]string) {
