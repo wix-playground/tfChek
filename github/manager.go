@@ -39,15 +39,25 @@ func (m *Manager) starter() {
 		log.Println("Waiting for a new branch to create pull request")
 		branch := <-m.successful
 		if branch != "" {
-			pr, err := m.client.CreatePR(branch)
-			if err != nil {
-				log.Printf("Cannot create PR Error: %s", err)
-			} else {
-				log.Printf("New PR #%d has been created", pr)
-			}
+			process(branch)
 		}
 	}
 }
+
+func process(branch string) {
+	number, err := m.client.CreatePR(branch)
+	if err != nil {
+		log.Printf("Failed to create PR Error: %s", err)
+	} else {
+		log.Printf("New PR #%d has been created", *number)
+	}
+	err = m.client.RequestReview(*number, &[]string{"maskimko"})
+	if err != nil {
+		log.Println("Failed to assign reviewers")
+	}
+	err = m.client.Review(*number, "run.sh finished ")
+}
+
 func (m *Manager) GetChannel() chan<- string {
 	return m.successful
 }

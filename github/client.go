@@ -48,10 +48,43 @@ func (c *ClientRunSH) CreatePR(branch string) (*int, error) {
 
 func (c *ClientRunSH) RequestReview(number int, reviewers *[]string) error {
 	rr := github.ReviewersRequest{Reviewers: *reviewers}
+
 	_, resp, err := c.client.PullRequests.RequestReviewers(c.context, c.Owner, c.Repository, number, rr)
 	if err != nil {
-		log.Printf("Cannot add reviewer to the pull request. Error: %s\nResponse: %v", err, resp)
-		return err
+
+		if ger, ok := err.(*github.ErrorResponse); ok {
+			if ger.Message != "Review cannot be requested from pull request author." {
+				if resp.Response.StatusCode == 422 && resp.Status == "422 Unprocessable Entity" && err.Error() != "Review cannot be requested from pull request author." {
+					log.Println("Trying to add user as a collaborator")
+					repository, _, err := c.client.Repositories.Get(c.context, c.Owner, c.Repository)
+					if err != nil {
+						log.Printf("Cannot fetch repo. Error: %s", err)
+					}
+					opts := github.RepositoryAddCollaboratorOptions{Permission: "admin"}
+					for _, rv := range *reviewers {
+						u, _, err := c.client.Users.Get(c.context, rv)
+						if err != nil {
+							log.Printf("cannot find user %s, Error: %s", rv, err)
+						}
+						resp, err = c.client.Repositories.AddCollaborator(c.context, *repository.Owner.Login, *repository.Name, *u.Login, &opts)
+						if err != nil {
+							log.Printf("Cannot add user %s as a collaborator. Error %s\nResponse: %v", rv, err, resp)
+						}
+					}
+					_, resp, err := c.client.PullRequests.RequestReviewers(c.context, c.Owner, c.Repository, number, rr)
+					if err != nil {
+						log.Printf("Cannot add reviewer to the pull request. Error: %s\nResponse: %v", err, resp)
+						return err
+					}
+				}
+			} else {
+				log.Printf("Cannot add reviewer to the pull request. Error: %s\nResponse: %v", err, resp)
+				return err
+			}
+		} else {
+			log.Printf("Cannot add reviewer to the pull request. Error: %s\nResponse: %v", err, resp)
+			return err
+		}
 	}
 	return nil
 }
