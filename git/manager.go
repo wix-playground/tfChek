@@ -3,20 +3,30 @@ package git
 import (
 	"errors"
 	"fmt"
+	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"io"
 	"log"
 	"os"
+	"strings"
+	"sync"
 )
 
 var Debug bool
+var lock sync.Mutex
+
+//Key split by ';' on url and state
+var repomngrs map[string]Manager
 
 type Manager interface {
 	Checkout(ref string) error
 	Pull() error
 	Clone() error
+	Open() error
+	GetPath() string
+	IsCloned() bool
 }
 
 type BuiltInManager struct {
@@ -24,6 +34,61 @@ type BuiltInManager struct {
 	repoPath  string
 	remote    *git.Remote
 	repo      *git.Repository
+}
+
+func (b *BuiltInManager) Open() error {
+
+	repository, err := git.PlainOpen(b.repoPath)
+	if err != nil {
+		log.Printf("Cannot open git repo %s. Error %s", b.repoPath, err)
+		return err
+	}
+	b.repo = repository
+	err = b.initRemotes()
+	if err != nil {
+		log.Printf("Cannot initialize remotes. Error: %s", err)
+	}
+	return nil
+}
+
+func (b *BuiltInManager) IsCloned() bool {
+	_, err := os.Stat(b.repoPath + "/.git")
+	if os.IsNotExist(err) {
+		return false
+	} else {
+		return true
+	}
+}
+
+func (b *BuiltInManager) GetPath() string {
+	return b.repoPath
+}
+
+//In case the repo is used for generating .tf files for different terraform states
+//Or it can be empty if terraform uses only 1 state
+func GetManager(url, state string) (Manager, error) {
+	if repomngrs == nil {
+		lock.Lock()
+		if repomngrs == nil {
+			repomngrs = make(map[string]Manager)
+		}
+		lock.Unlock()
+	}
+	key := url
+	if state != "" {
+		key = key + ";" + state
+	}
+	if repomngrs[key] == nil {
+		lock.Lock()
+		if repomngrs[key] == nil {
+			urlChunks := strings.Split(url, "/")
+			repoName := urlChunks[len(urlChunks)-1]
+			path := fmt.Sprintf("%s/%s/%s", viper.GetString("repo_dir"), repoName, state)
+			repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path}
+		}
+		lock.Unlock()
+	}
+	return repomngrs[key], nil
 }
 
 func (b *BuiltInManager) Checkout(branchName string) error {
@@ -199,13 +264,21 @@ func (b *BuiltInManager) Clone() error {
 		log.Printf("Cannot clone repository. Error: %s", err)
 		return err
 	}
+	err = b.initRemotes()
+	if err != nil {
+		log.Printf("Cannot initialize remotes. Error: %s", err)
+	}
+	return nil
+}
+
+func (b *BuiltInManager) initRemotes() error {
 	remotes, err := b.repo.Remotes()
 	if err != nil {
 		if Debug {
 			log.Printf("Cannot get remotes of git repository %s. Error: %s", b.repoPath, err)
 		}
 		//Not critical
-		return nil
+		return err
 	}
 	//This should never happen
 	if len(remotes) == 0 {
@@ -213,7 +286,7 @@ func (b *BuiltInManager) Clone() error {
 			log.Printf("Got no remotes of git repository %s", b.repoPath)
 		}
 		//Not critical
-		return nil
+		return errors.New("No remotes available")
 	} else {
 		for _, r := range remotes {
 			if r.Config().Name == "origin" {

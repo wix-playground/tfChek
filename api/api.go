@@ -15,12 +15,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"tfChek/git"
 	"tfChek/launcher"
 	"time"
 )
 import "gopkg.in/go-playground/webhooks.v5/github"
-
-const RUNSHWD = "repopath"
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -124,7 +123,7 @@ func RunShEnv(w http.ResponseWriter, r *http.Request) {
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
 
-	runsh(w, r, env, layer, viper.GetString(RUNSHWD), time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
+	runsh(w, r, env, layer, time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
 }
 
 func Cancel(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +179,7 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 	layer := v["Layer"]
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
-	runsh(w, r, env, layer, viper.GetString(RUNSHWD), time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
+	runsh(w, r, env, layer, time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
 }
 
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
@@ -206,18 +205,17 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
 	//bytes, err := json.MarshalIndent(payload, "WEBHOOK:\t", "\t")
 	//if err != nil {
 	//	log.Printf("Cannot marshal webhook. Error: %s", err)
 	//} else {
 	//	log.Printf("Got webhook:\n %s", bytes)
 	//}
-
 	switch payload.(type) {
 	case github.PushPayload:
 		pushPayload := payload.(github.PushPayload)
 		if pushPayload.Created {
+			//branchName := plumbing.NewBranchReferenceName(pushPayload.Ref).Short()
 			branchName := strings.ReplaceAll(pushPayload.Ref, "refs/heads/", "")
 			matched, err := regexp.Match("^"+launcher.TASKPREFIX+"[0-9]+", []byte(branchName))
 			if err != nil {
@@ -234,7 +232,24 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 					w.Write([]byte(errmsg))
 					return
 				} else {
-					err := tm.LaunchById(taskId)
+
+					//Prepare git directory
+					task := tm.Get(taskId)
+					if task == nil {
+						log.Printf("Cannot find task by id: %d", taskId)
+						w.WriteHeader(404)
+						w.Write([]byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
+						return
+					}
+					gitMan, err := git.GetManager(pushPayload.Repository.GitURL, task.SyncName())
+					if err != nil {
+						log.Printf("Cannot get Git manager")
+					}
+					rst, ok := task.(*launcher.RunShTask)
+					if ok {
+						rst.GitManager = gitMan
+					}
+					err = tm.LaunchById(taskId)
 					if err != nil {
 						errmsg := fmt.Sprintf("Cannot launch task id %d. Error: %s", taskId, err)
 						log.Println(errmsg)
@@ -248,10 +263,14 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(200)
 			}
 		}
+		if pushPayload.Deleted {
+			log.Printf("Branch %s has been deleted", pushPayload.Ref)
+		}
+		log.Printf("Processed webhook of branch %s", pushPayload.Ref)
 	}
 }
 
-func fetch_authors(payload github.PushPayload) *[]string {
+func fetch_authors(payload *github.PushPayload) *[]string {
 	author_usernames := make(map[string]struct{}, 0)
 	if payload != nil {
 		for _, commit := range payload.Commits {
@@ -267,7 +286,7 @@ func fetch_authors(payload github.PushPayload) *[]string {
 	return &res
 }
 
-func runsh(w http.ResponseWriter, r *http.Request, env, layer, workDir string, timeout time.Duration, envVars *map[string]string) {
+func runsh(w http.ResponseWriter, r *http.Request, env, layer string, timeout time.Duration, envVars *map[string]string) {
 	tm := launcher.GetTaskManager()
 	w.Header().Set("Content-Type", "application/json")
 	var cmd launcher.RunShCmd
@@ -287,9 +306,7 @@ func runsh(w http.ResponseWriter, r *http.Request, env, layer, workDir string, t
 	cmd = launcher.RunShCmd{Layer: layer, Env: env, All: all == "true", Omit: omit == "true", Targets: targets, No: no == "true", Yes: yes == "true"}
 	ctx, cancel := context.WithTimeout(
 		context.WithValue(
-			context.WithValue(
-				context.Background(),
-				launcher.WD, workDir),
+			context.Background(),
 			launcher.ENVVARS, envVars),
 		timeout)
 	bt, err := tm.AddRunSh(cmd, ctx)

@@ -35,6 +35,7 @@ type Task interface {
 	Start() error
 	Done() error
 	Fail() error
+	ForceFail()
 	TimeoutFail() error
 }
 

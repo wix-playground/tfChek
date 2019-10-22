@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"tfChek/git"
 	"tfChek/github"
 	"tfChek/storer"
 )
@@ -90,6 +91,11 @@ type RunShTask struct {
 	inR        io.ReadCloser
 	outW, errW io.WriteCloser
 	save       bool
+	GitManager git.Manager
+}
+
+func (rst *RunShTask) ForceFail() {
+	rst.Status = FAILED
 }
 
 func (rst *RunShTask) GetStatus() TaskStatus {
@@ -127,24 +133,62 @@ func (rst *RunShTask) GetStdIn() io.Writer {
 	return rst.in
 }
 
+func (rst *RunShTask) prepareGit() error {
+	if rst.GitManager == nil {
+		return errors.New("Git manager has been not initialized")
+	}
+	if rst.GitManager.IsCloned() {
+		err := rst.GitManager.Open()
+		if err != nil {
+			log.Printf("Cannot open git repository. Error: %s", err)
+			return err
+		}
+	} else {
+		path := rst.GitManager.GetPath()
+		_, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			err := os.MkdirAll(path, 0755)
+			if err != nil {
+				log.Printf("Cannot create directory for git repository. Error: %s", err)
+				return err
+			}
+		}
+		err = rst.GitManager.Clone()
+		if err != nil {
+			log.Printf("Cannot clone repository. Error: %s", err)
+			return err
+		}
+	}
+	branch := fmt.Sprintf("%s%d", TASKPREFIX, rst.Id)
+	err := rst.GitManager.Checkout(branch)
+	if err != nil {
+		log.Printf("Cannot checkout branch ")
+		return err
+	}
+	err = rst.GitManager.Pull()
+	if err != nil {
+		log.Printf("Cannot pull changes. Error: %s", err)
+
+	}
+	return err
+}
+
 func (rst *RunShTask) Run() error {
 	if rst.Status != SCHEDULED {
 		return errors.New("cannot run unscheduled task")
+	}
+	//Perform git routines
+	err := rst.prepareGit()
+	if err != nil {
+		log.Printf("Cannot prepare git repository. Error: %s", err)
+		rst.ForceFail()
+		return err
 	}
 	defer rst.outW.Close()
 	defer rst.errW.Close()
 	defer rst.inR.Close()
 	//Get working directory
-	var cwd string
-	if d, ok := rst.Context.Value(WD).(string); ok {
-		cwd = d
-	} else {
-		d, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		cwd = d
-	}
+	cwd := rst.GitManager.GetPath()
 	log.Printf("Task id: %d working directory: %s", rst.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
@@ -178,7 +222,7 @@ func (rst *RunShTask) Run() error {
 
 	//I will write nothing to the command
 	//So closing stdin immediately
-	err := rst.inR.Close()
+	err = rst.inR.Close()
 	if err != nil {
 		log.Printf("Cannot close stdin for task id: %d", rst.Id)
 	}

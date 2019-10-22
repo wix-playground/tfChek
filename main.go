@@ -8,8 +8,6 @@ import (
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 	"tfChek/api"
 	"tfChek/github"
 	"tfChek/launcher"
@@ -32,11 +30,6 @@ const (
 )
 
 func config() {
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Printf("Cannot get working directory. Error: %s", err)
-		wd = "."
-	}
 	flag.Int("port", PORT, "Port application will listen to")
 	flag.Bool("debug", false, "Print debug messages")
 	flag.String("outdir", "out", "Directory to save output of the task runs")
@@ -45,12 +38,13 @@ func config() {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 	viper.BindPFlags(pflag.CommandLine)
-	viper.SetDefault(api.RUNSHWD, wd)
 	viper.SetDefault("debug", false)
 	viper.SetDefault("qlength", 10)
 	viper.SetDefault("timeout", 300)
 	viper.SetDefault("repo_owner", "wix-system")
 	viper.SetDefault("webhook_secret", "notAsecretAtAll:)")
+	viper.SetDefault("repo_dir", "/var/tfChek/repos_by_state/")
+	viper.SetDefault("repo_name", "production_42")
 	viper.SetEnvPrefix("TFCHEK")
 	viper.AutomaticEnv()
 	viper.SetConfigName(APPNAME)
@@ -58,7 +52,7 @@ func config() {
 	viper.AddConfigPath("/configs/" + APPNAME)
 	viper.AddConfigPath("$HOME/." + APPNAME)
 	viper.AddConfigPath(".")
-	viper.ReadInConfig()
+	err := viper.ReadInConfig()
 	if err != nil {
 		log.Printf("Cannot read configuration. Error: %s", err)
 	}
@@ -86,8 +80,8 @@ func initialize() {
 	//Prepare configuration
 	config()
 	//Start GitHub API manager
-	pchnk := strings.Split(strings.TrimRight(viper.GetString(api.RUNSHWD), "/"), "/")
-	repoName := pchnk[len(pchnk)-1]
+
+	repoName := viper.GetString("repo_name")
 	repoOwner := viper.GetString("repo_owner")
 	token := viper.GetString("token")
 	github.InitManager(repoName, repoOwner, token)
