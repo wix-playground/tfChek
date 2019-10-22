@@ -57,10 +57,10 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 		//	log.Printf("Cannot get HEAD. Error: %s", err)
 		//	return err
 		//}
-		origin := remotes[0].Config().Name
+		origin := b.remote.Config().Name
 		branch := plumbing.NewBranchReferenceName(branchName)
 		remoteBranch := plumbing.NewRemoteReferenceName(origin, branchName)
-		fo, _ := getFetchOptions(branch, remotes[0])
+		fo, _ := getFetchOptions(branch, b.remote)
 		err = b.repo.Fetch(fo)
 		if err != nil {
 			log.Printf("Cannot fetch remoteUrl references. Error: %s", err)
@@ -137,7 +137,7 @@ func (b *BuiltInManager) Pull() error {
 		return err
 	}
 
-	fo, _ := getFetchOptions(gitRef.Name(), remotes[0])
+	fo, _ := getFetchOptions(gitRef.Name(), b.remote)
 	err = b.repo.Fetch(fo)
 	if err == nil {
 		log.Printf("Cannot fetch remoteUrl references. Error: %s", err)
@@ -146,7 +146,7 @@ func (b *BuiltInManager) Pull() error {
 		}
 
 	}
-	err = gwt.Pull(&git.PullOptions{RemoteName: remotes[0].Config().Name, ReferenceName: gitRef.Name(), SingleBranch: true})
+	err = gwt.Pull(&git.PullOptions{RemoteName: b.remote.Config().Name, ReferenceName: gitRef.Name(), SingleBranch: true})
 	if err != nil && err.Error() != "already up-to-date" {
 		log.Printf("Cannot fetch remoteUrl references. Error: %s", err)
 		if err.Error() != "already up-to-date" {
@@ -199,38 +199,31 @@ func (b *BuiltInManager) Clone() error {
 		log.Printf("Cannot clone repository. Error: %s", err)
 		return err
 	}
-	return nil
-}
-
-//Performs hard reset, pull, and master checkout
-func updateMaster(g, remote string) error {
-	gitRepo, err := git.PlainOpen(g)
+	remotes, err := b.repo.Remotes()
 	if err != nil {
-		return err
-	}
-	gitRef, err := gitRepo.Head()
-	if err != nil {
-		if Debug && err.Error() == "reference not found" {
-			log.Printf("It looks like git pull process was interrupted before. Directory: %s", g)
+		if Debug {
+			log.Printf("Cannot get remotes of git repository %s. Error: %s", b.repoPath, err)
 		}
-		return err
+		//Not critical
+		return nil
 	}
-	gitHash := gitRef.Hash()
-	gwt, err := gitRepo.Worktree()
-	if err != nil {
-		return err
-	}
-	err = gwt.Reset(&git.ResetOptions{Commit: gitHash, Mode: git.HardReset})
-	if err != nil {
-		return err
-	}
-	err = gwt.Checkout(&git.CheckoutOptions{Branch: plumbing.Master})
-	if err != nil {
-		log.Printf("Cannot checkout master branch")
-	}
-	err = gwt.Pull(&git.PullOptions{RemoteName: remote, ReferenceName: plumbing.Master, SingleBranch: true})
-	if err != nil && err.Error() != "already up-to-date" {
-		return err
+	//This should never happen
+	if len(remotes) == 0 {
+		if Debug {
+			log.Printf("Got no remotes of git repository %s", b.repoPath)
+		}
+		//Not critical
+		return nil
+	} else {
+		for _, r := range remotes {
+			if r.Config().Name == "origin" {
+				b.remote = r
+			}
+		}
+		if b.remote == nil {
+			//Pick the first one
+			b.remote = remotes[0]
+		}
 	}
 	return nil
 }
