@@ -13,12 +13,8 @@ import (
 	"path"
 	"strconv"
 	"sync"
+	"tfChek/misc"
 	"time"
-)
-
-const (
-	WD      = "WORKING_DIRECTORY"
-	ENVVARS = "ENVIRONMENT_VARIABLES"
 )
 
 var tm TaskManager
@@ -78,7 +74,7 @@ func (tm *TaskManagerImpl) AddRunSh(rcs RunShCmd, ctx context.Context) (Task, er
 	errPipeReader, errPipeWriter := io.Pipe()
 	inPipeReader, inPipeWriter := io.Pipe()
 	t := RunShTask{Command: command, Args: args, Context: ctx,
-		Status: OPEN, save: tm.saveRuns,
+		Status: misc.OPEN, save: tm.saveRuns,
 		Socket:    make(chan *websocket.Conn),
 		StateLock: fmt.Sprintf("%s/%s", rcs.Env, rcs.Layer),
 		out:       outPipeReader, err: errPipeReader, in: inPipeWriter,
@@ -144,38 +140,43 @@ func readSequence() int {
 	var seq int
 	if err != nil {
 		log.Printf("Cannot open sequence file %s Error: %s", rd, err)
-		seq = 0
+		return 0
 	}
+	defer seqFile.Close()
 	seqBytes, err := ioutil.ReadAll(seqFile)
 	if err != nil {
 		log.Printf("Cannot read sequence file %s Error: %s", rd, err)
-		seq = 0
+		return 0
 	}
 	seq, err = strconv.Atoi(string(seqBytes))
 	if err != nil {
 		log.Printf("Cannot convert sequence %s form file %s Error: %s", seqBytes, rd, err)
-		seq = 0
-	}
-	err = seqFile.Close()
-	if err != nil {
-		log.Printf("Cannot close sequence file %s Error: %s", rd, err)
+		return 0
 	}
 	return seq
 }
 
 func writeSequence(i int) {
-	rd := path.Join(path.Dir(viper.GetString("run_dir")), "sequence")
+	rundir := path.Dir(viper.GetString("run_dir"))
+	if _, err := os.Stat(rundir); os.IsNotExist(err) {
+		err := os.MkdirAll(rundir, 0755)
+		if err != nil {
+			log.Printf("Cannot create run directory %s Error: %s", rundir, err)
+		}
+	}
+	rd := path.Join(rundir, "sequence")
 	seqFile, err := os.Open(rd)
+	if err != nil {
+		log.Printf("Cannot open sequence file %s Error %s", rd, err)
+	}
+	defer seqFile.Close()
 	_, err = seqFile.Write([]byte(strconv.Itoa(i)))
 	if err != nil {
 		if DEBUG {
 			log.Printf("Cannot save sequence %d to file %s Error: %s", i, rd, err)
 		}
 	}
-	err = seqFile.Close()
-	if err != nil {
-		log.Printf("Cannot close sequence file %s Error: %s", rd, err)
-	}
+
 }
 
 func NewTaskManager() TaskManager {
@@ -190,7 +191,7 @@ func NewTaskManager() TaskManager {
 }
 
 func (tm *TaskManagerImpl) Launch(bt Task) error {
-	if bt.GetStatus() != OPEN {
+	if bt.GetStatus() != misc.OPEN {
 		return errors.New("cannot launch task in not open status")
 	}
 	if tm.threads[bt.SyncName()] == nil {
@@ -200,7 +201,7 @@ func (tm *TaskManagerImpl) Launch(bt Task) error {
 		}
 		tm.lock.Unlock()
 	}
-	bt.SetStatus(SCHEDULED)
+	bt.SetStatus(misc.SCHEDULED)
 	tm.threads[bt.SyncName()] <- bt
 
 	return nil

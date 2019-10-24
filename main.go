@@ -11,26 +11,11 @@ import (
 	"tfChek/api"
 	"tfChek/github"
 	"tfChek/launcher"
-)
-
-const (
-	STATICDIR      = "/static/"
-	WEBHOOKPATH    = "/webhook/"
-	PORT           = 8085
-	APPNAME        = "tfChek"
-	runshchunk     = "runsh/"
-	APIV1          = "/api/v1/"
-	APIRUNSH       = APIV1 + runshchunk
-	APICANCEL      = APIV1 + "cancel/"
-	WEBSOCKETPATH  = "/ws/"
-	WSRUNSH        = WEBSOCKETPATH + runshchunk
-	WEBHOOKRUNSH   = WEBHOOKPATH + runshchunk
-	HEALTHCHECK    = "/health/is_alive"
-	READINESSCHECK = "/health/is_ready"
+	"tfChek/misc"
 )
 
 func config() {
-	flag.Int("port", PORT, "Port application will listen to")
+	flag.Int("port", misc.PORT, "Port application will listen to")
 	flag.Bool("debug", false, "Print debug messages")
 	flag.String("out_dir", "/var/tfChek/out/", "Directory to save output of the task runs")
 	flag.Bool("dismiss_out", true, "Save tasks output to the files in outdir")
@@ -48,10 +33,10 @@ func config() {
 	viper.SetDefault("run_dir", "/var/run/tfChek/")
 	viper.SetEnvPrefix("TFCHEK")
 	viper.AutomaticEnv()
-	viper.SetConfigName(APPNAME)
-	viper.AddConfigPath("/opt/wix/" + APPNAME + "/etc/")
-	viper.AddConfigPath("/configs/" + APPNAME)
-	viper.AddConfigPath("$HOME/." + APPNAME)
+	viper.SetConfigName(misc.APPNAME)
+	viper.AddConfigPath("/opt/wix/" + misc.APPNAME + "/etc/")
+	viper.AddConfigPath("/configs/" + misc.APPNAME)
+	viper.AddConfigPath("$HOME/." + misc.APPNAME)
 	viper.AddConfigPath(".")
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -62,14 +47,14 @@ func config() {
 
 func setupRoutes() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc(WSRUNSH+"{Id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
-	router.Path(APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
-	router.Path(APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
-	router.Path(APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
-	router.Path(WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
-	router.PathPrefix(STATICDIR).Handler(http.StripPrefix(STATICDIR, http.FileServer(http.Dir("."+STATICDIR))))
-	router.Path(HEALTHCHECK).HandlerFunc(api.HealthCheck)
-	router.Path(READINESSCHECK).HandlerFunc(api.ReadinessCheck)
+	router.HandleFunc(misc.WSRUNSH+"{Id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
+	router.Path(misc.APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
+	router.Path(misc.APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
+	router.Path(misc.APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
+	router.Path(misc.WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
+	router.PathPrefix(misc.STATICDIR).Handler(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR))))
+	router.Path(misc.HEALTHCHECK).HandlerFunc(api.HealthCheck)
+	router.Path(misc.READINESSCHECK).HandlerFunc(api.ReadinessCheck)
 	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		http.ServeFile(writer, request, "./static/index.html")
 	})

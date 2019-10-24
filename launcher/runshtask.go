@@ -1,9 +1,11 @@
 package launcher
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/acarl005/stripansi"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
@@ -11,14 +13,13 @@ import (
 	"os/exec"
 	"tfChek/git"
 	"tfChek/github"
+	"tfChek/misc"
 	"tfChek/storer"
 )
 
-const TASKPREFIX = "tfci-"
-
 func (rst *RunShTask) Register() error {
-	if rst.Status == OPEN {
-		rst.Status = REGISTERED
+	if rst.Status == misc.OPEN {
+		rst.Status = misc.REGISTERED
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled registered, beacuse it is not open. Please make get request. Current state number is %d", rst.Status)}
@@ -26,8 +27,8 @@ func (rst *RunShTask) Register() error {
 }
 
 func (rst *RunShTask) Schedule() error {
-	if rst.Status == REGISTERED {
-		rst.Status = SCHEDULED
+	if rst.Status == misc.REGISTERED {
+		rst.Status = misc.SCHEDULED
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled because it has been not registered. Please wait for a webhook. Current state number is %d", rst.Status)}
@@ -35,23 +36,28 @@ func (rst *RunShTask) Schedule() error {
 }
 
 func (rst *RunShTask) Start() error {
-	if rst.Status < STARTED {
+	if rst.Status < misc.STARTED {
 		if DEBUG {
 			log.Printf("Start of task %s", rst.Name)
 		}
-		rst.Status = STARTED
+		rst.Status = misc.STARTED
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be started because it is not in scheduled state. Current state number is %d", rst.Status)}
 	}
 }
 func (rst *RunShTask) Done() error {
-	if rst.Status == STARTED {
-		rst.Status = DONE
+	if rst.Status == misc.STARTED {
+		rst.Status = misc.DONE
 		manager := github.GetManager()
 		if manager != nil {
 			c := manager.GetChannel()
-			c <- fmt.Sprintf("%s%d", TASKPREFIX, rst.Id)
+			o := rst.GetOut()
+			if o == "" {
+				o = misc.NOOUTPUT
+			}
+			data := github.NewPRData(rst.Id, true, &o)
+			c <- data
 		}
 		return nil
 	} else {
@@ -60,8 +66,8 @@ func (rst *RunShTask) Done() error {
 }
 
 func (rst *RunShTask) Fail() error {
-	if rst.Status == STARTED {
-		rst.Status = FAILED
+	if rst.Status == misc.STARTED {
+		rst.Status = misc.FAILED
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be failed, because it has been not started. Current state number is %d", rst.Status)}
@@ -69,8 +75,8 @@ func (rst *RunShTask) Fail() error {
 }
 
 func (rst *RunShTask) TimeoutFail() error {
-	if rst.Status == STARTED {
-		rst.Status = TIMEOUT
+	if rst.Status == misc.STARTED {
+		rst.Status = misc.TIMEOUT
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be timed out, because it has been not started. Current state number is %d", rst.Status)}
@@ -93,10 +99,16 @@ type RunShTask struct {
 	outW, errW io.WriteCloser
 	save       bool
 	GitManager git.Manager
+	sink       bytes.Buffer
+}
+
+func (rst *RunShTask) GetOut() string {
+	cleanOut := stripansi.Strip(rst.sink.String())
+	return cleanOut
 }
 
 func (rst *RunShTask) ForceFail() {
-	rst.Status = FAILED
+	rst.Status = misc.FAILED
 }
 
 func (rst *RunShTask) GetStatus() TaskStatus {
@@ -160,7 +172,7 @@ func (rst *RunShTask) prepareGit() error {
 			return err
 		}
 	}
-	branch := fmt.Sprintf("%s%d", TASKPREFIX, rst.Id)
+	branch := fmt.Sprintf("%s%d", misc.TASKPREFIX, rst.Id)
 	err := rst.GitManager.Checkout(branch)
 	if err != nil {
 		log.Printf("Cannot checkout branch ")
@@ -175,7 +187,7 @@ func (rst *RunShTask) prepareGit() error {
 }
 
 func (rst *RunShTask) Run() error {
-	if rst.Status != SCHEDULED {
+	if rst.Status != misc.SCHEDULED {
 		return errors.New("cannot run unscheduled task")
 	}
 	//Perform git routines
@@ -193,19 +205,23 @@ func (rst *RunShTask) Run() error {
 	log.Printf("Task id: %d working directory: %s", rst.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
-	if d, ok := rst.Context.Value(ENVVARS).(map[string]string); ok {
+	if d, ok := rst.Context.Value(misc.ENVVARS).(map[string]string); ok {
 		for k, v := range d {
 			sysenv = append(sysenv, fmt.Sprintf("%s=%s", k, v))
 		}
 	}
 	log.Printf("Task id: %d environment: %s", rst.Id, sysenv)
 
+	//Save command execution output
+
+	mw := io.MultiWriter(rst.outW, &rst.sink)
+
 	command := exec.CommandContext(rst.Context, rst.Command, rst.Args...)
 	command.Dir = cwd
 	command.Env = sysenv
 	log.Printf("Running command and waiting for it to finish...")
-	command.Stdout = rst.outW
-	command.Stderr = rst.errW
+	command.Stdout = mw
+	command.Stderr = mw
 	//command.Stdin = rst.inR
 	command.Stdin = nil
 	//Ugly but I did not found a better place
@@ -214,8 +230,8 @@ func (rst *RunShTask) Run() error {
 		if err != nil {
 			log.Printf("Save to file for task %d is disabled. Error: %s", rst.Id, err)
 		} else {
-			ow := io.MultiWriter(rst.outW, out)
-			eow := io.MultiWriter(rst.errW, out)
+			ow := io.MultiWriter(mw, out)
+			eow := io.MultiWriter(mw, out)
 			command.Stdout = ow
 			command.Stderr = eow
 		}

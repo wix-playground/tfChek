@@ -129,6 +129,42 @@ func TestClientRunSH_Review(t *testing.T) {
 	}
 }
 
+func TestClientRunSH_Comment(t *testing.T) {
+	cmnt := "test tfChek ------------ long comment"
+	type fields struct {
+		Repository string
+		Owner      string
+		Token      string
+	}
+	type args struct {
+		number  int
+		comment *string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{name: "Pull request test",
+			args:    args{number: num, comment: &cmnt},
+			wantErr: false,
+			fields: fields{Repository: "tfChek-testrepo",
+				Owner: "wix-system",
+				Token: os.Getenv("TFCHEK_TOKEN"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := NewClientRunSH(tt.fields.Repository, tt.fields.Owner, tt.fields.Token)
+			if err := c.Comment(tt.args.number, tt.args.comment); (err != nil) != tt.wantErr {
+				t.Errorf("Review() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestClientRunSH_Close(t *testing.T) {
 	type fields struct {
 		Repository string

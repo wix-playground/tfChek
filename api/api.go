@@ -17,6 +17,7 @@ import (
 	"sync"
 	"tfChek/git"
 	"tfChek/launcher"
+	"tfChek/misc"
 	"time"
 )
 import "gopkg.in/go-playground/webhooks.v5/github"
@@ -217,7 +218,7 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 		if pushPayload.Created {
 			//branchName := plumbing.NewBranchReferenceName(pushPayload.Ref).Short()
 			branchName := strings.ReplaceAll(pushPayload.Ref, "refs/heads/", "")
-			matched, err := regexp.Match("^"+launcher.TASKPREFIX+"[0-9]+", []byte(branchName))
+			matched, err := regexp.Match("^"+misc.TASKPREFIX+"[0-9]+", []byte(branchName))
 			if err != nil {
 				log.Printf("Cannot match against regex")
 			}
@@ -307,7 +308,7 @@ func runsh(w http.ResponseWriter, r *http.Request, env, layer string, timeout ti
 	ctx, cancel := context.WithTimeout(
 		context.WithValue(
 			context.Background(),
-			launcher.ENVVARS, envVars),
+			misc.ENVVARS, envVars),
 		timeout)
 	bt, err := tm.AddRunSh(cmd, ctx)
 	if err != nil {

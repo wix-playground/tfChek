@@ -6,10 +6,8 @@ import (
 	"log"
 	"os"
 	"strings"
+	"tfChek/misc"
 )
-
-//TODO: remove "production_42" hardcode
-const PROD42 = "production_42"
 
 func LocateRepo(workdir string) (string, error) {
 	if !strings.HasPrefix(workdir, "/") {
@@ -18,7 +16,7 @@ func LocateRepo(workdir string) (string, error) {
 	chunks := strings.Split(workdir, "/")
 	var p []string
 	for i, f := range chunks {
-		if f == PROD42 {
+		if f == misc.PROD42 {
 			p = chunks[:i+1]
 			break
 		}

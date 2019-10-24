@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"tfChek/misc"
 	"tfChek/storer"
 )
 
@@ -26,6 +27,7 @@ type Task interface {
 	GetId() int
 	setId(id int)
 	GetStdOut() io.Reader
+	GetOut() string
 	GetStdErr() io.Reader
 	GetStdIn() io.Writer
 	GetStatus() TaskStatus
@@ -39,31 +41,21 @@ type Task interface {
 	TimeoutFail() error
 }
 
-const (
-	OPEN       = iota //Task has been just created
-	REGISTERED        //Corresponding webhook arrived to the server
-	SCHEDULED         //Task has been accepted to the job queue
-	STARTED           //Task has been started
-	FAILED            //Task failed
-	TIMEOUT           //Task failed to finish in time
-	DONE              //Task completed
-)
-
 func GetStatusString(status TaskStatus) string {
 	switch status {
-	case OPEN:
+	case misc.OPEN:
 		return "open"
-	case REGISTERED:
+	case misc.REGISTERED:
 		return "registered"
-	case SCHEDULED:
+	case misc.SCHEDULED:
 		return "scheduled"
-	case STARTED:
+	case misc.STARTED:
 		return "started"
-	case FAILED:
+	case misc.FAILED:
 		return "failed"
-	case TIMEOUT:
+	case misc.TIMEOUT:
 		return "timeout"
-	case DONE:
+	case misc.DONE:
 		return "done"
 	default:
 		return "unknown"
@@ -73,8 +65,8 @@ func GetStatusString(status TaskStatus) string {
 var DEBUG bool = false
 
 func (bti *BackgroundTaskImpl) Register() error {
-	if bti.Status == OPEN {
-		bti.Status = REGISTERED
+	if bti.Status == misc.OPEN {
+		bti.Status = misc.REGISTERED
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled registered, beacuse it is not open. Please make get request. Current state number is %d", bti.Status)}
@@ -82,8 +74,8 @@ func (bti *BackgroundTaskImpl) Register() error {
 }
 
 func (bti *BackgroundTaskImpl) Schedule() error {
-	if bti.Status == REGISTERED {
-		bti.Status = SCHEDULED
+	if bti.Status == misc.REGISTERED {
+		bti.Status = misc.SCHEDULED
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled because it has been not registered. Please wait for a webhook. Current state number is %d", bti.Status)}
@@ -91,19 +83,19 @@ func (bti *BackgroundTaskImpl) Schedule() error {
 }
 
 func (bti *BackgroundTaskImpl) Start() error {
-	if bti.Status < STARTED {
+	if bti.Status < misc.STARTED {
 		if DEBUG {
 			log.Printf("Start of task %s", bti.Name)
 		}
-		bti.Status = STARTED
+		bti.Status = misc.STARTED
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be started because it is not in scheduled state. Current state number is %d", bti.Status)}
 	}
 }
 func (bti *BackgroundTaskImpl) Done() error {
-	if bti.Status == STARTED {
-		bti.Status = DONE
+	if bti.Status == misc.STARTED {
+		bti.Status = misc.DONE
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be done, because it has been not started. Current state number is %d", bti.Status)}
@@ -111,8 +103,8 @@ func (bti *BackgroundTaskImpl) Done() error {
 }
 
 func (bti *BackgroundTaskImpl) Fail() error {
-	if bti.Status == STARTED {
-		bti.Status = FAILED
+	if bti.Status == misc.STARTED {
+		bti.Status = misc.FAILED
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be failed, because it has been not started. Current state number is %d", bti.Status)}
@@ -120,8 +112,8 @@ func (bti *BackgroundTaskImpl) Fail() error {
 }
 
 func (bti *BackgroundTaskImpl) TimeoutFail() error {
-	if bti.Status == STARTED {
-		bti.Status = TIMEOUT
+	if bti.Status == misc.STARTED {
+		bti.Status = misc.TIMEOUT
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be timed out, because it has been not started. Current state number is %d", bti.Status)}
@@ -177,7 +169,7 @@ func (bti *BackgroundTaskImpl) GetStdIn() io.Writer {
 }
 
 func (bti *BackgroundTaskImpl) Run() error {
-	if bti.Status != SCHEDULED {
+	if bti.Status != misc.SCHEDULED {
 		return errors.New("cannot run unscheduled task")
 	}
 	defer bti.outW.Close()
@@ -185,7 +177,7 @@ func (bti *BackgroundTaskImpl) Run() error {
 	defer bti.inR.Close()
 	//Get working directory
 	var cwd string
-	if d, ok := bti.Context.Value(WD).(string); ok {
+	if d, ok := bti.Context.Value(misc.WD).(string); ok {
 		cwd = d
 	} else {
 		d, err := os.Getwd()
@@ -197,7 +189,7 @@ func (bti *BackgroundTaskImpl) Run() error {
 	log.Printf("Task id: %d working directory: %s", bti.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
-	if d, ok := bti.Context.Value(ENVVARS).(map[string]string); ok {
+	if d, ok := bti.Context.Value(misc.ENVVARS).(map[string]string); ok {
 		for k, v := range d {
 			sysenv = append(sysenv, fmt.Sprintf("%s=%s", k, v))
 		}
@@ -232,18 +224,18 @@ func (bti *BackgroundTaskImpl) Run() error {
 		log.Printf("Cannot close stdin for task id: %d", bti.Id)
 	}
 
-	bti.Status = STARTED
+	bti.Status = misc.STARTED
 	err = command.Run()
 	if err != nil {
 		if err.Error() == "context deadline exceeded" {
 			log.Printf("Command timed out error: %v", err)
-			bti.Status = TIMEOUT
+			bti.Status = misc.TIMEOUT
 		} else {
 			log.Printf("Command finished with error: %v", err)
-			bti.Status = FAILED
+			bti.Status = misc.FAILED
 		}
 	} else {
-		bti.Status = DONE
+		bti.Status = misc.DONE
 		log.Println("Command completed successfully")
 	}
 	return err

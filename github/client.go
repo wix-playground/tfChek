@@ -12,6 +12,7 @@ type GitHubClient interface {
 	RequestReview(number int, reviewers *[]string) error
 	Review(number int, comment string) error
 	Close(number int) error
+	Comment(number int, comment *string) error
 }
 
 type ClientRunSH struct {
@@ -28,6 +29,19 @@ func NewClientRunSH(repository, owner, token string) *ClientRunSH {
 	client := github.NewClient(tc)
 	c := ClientRunSH{Repository: repository, Owner: owner, client: client, context: ctx}
 	return &c
+}
+
+func (c *ClientRunSH) Comment(number int, comment *string) error {
+	cmnt := &github.IssueComment{Body: comment}
+	requestComment, response, err := c.client.Issues.CreateComment(c.context, c.Owner, c.Repository, number, cmnt)
+	if err != nil {
+		log.Printf("Cannot comment a pull request number %d Error: %s", number, err)
+		if requestComment != nil {
+			log.Printf("PR Comment id: %d failed. Response status %s", *requestComment.ID, response.Status)
+		}
+		return err
+	}
+	return nil
 }
 
 func (c *ClientRunSH) CreatePR(branch string) (*int, error) {

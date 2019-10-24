@@ -3,6 +3,7 @@ module tfChek
 go 1.12
 
 require (
+	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/google/go-github/v28 v28.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
