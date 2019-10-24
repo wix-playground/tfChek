@@ -78,6 +78,7 @@ func (rst *RunShTask) TimeoutFail() error {
 }
 
 type RunShTask struct {
+	Task
 	Name       string
 	Id         int
 	Command    string

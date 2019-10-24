@@ -129,6 +129,7 @@ func (bti *BackgroundTaskImpl) TimeoutFail() error {
 }
 
 type BackgroundTaskImpl struct {
+	Task
 	Name       string
 	Id         int
 	Command    string

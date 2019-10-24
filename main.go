@@ -32,8 +32,8 @@ const (
 func config() {
 	flag.Int("port", PORT, "Port application will listen to")
 	flag.Bool("debug", false, "Print debug messages")
-	flag.String("outdir", "out", "Directory to save output of the task runs")
-	flag.Bool("save", true, "Save tasks output to the files in outdir")
+	flag.String("out_dir", "/var/tfChek/out/", "Directory to save output of the task runs")
+	flag.Bool("dismiss_out", true, "Save tasks output to the files in outdir")
 	flag.String("token", "", "GitHub API access token")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -45,6 +45,7 @@ func config() {
 	viper.SetDefault("webhook_secret", "notAsecretAtAll:)")
 	viper.SetDefault("repo_dir", "/var/tfChek/repos_by_state/")
 	viper.SetDefault("repo_name", "production_42")
+	viper.SetDefault("run_dir", "/var/run/tfChek/")
 	viper.SetEnvPrefix("TFCHEK")
 	viper.AutomaticEnv()
 	viper.SetConfigName(APPNAME)

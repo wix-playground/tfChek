@@ -7,7 +7,11 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
 	"io"
+	"io/ioutil"
 	"log"
+	"os"
+	"path"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -36,6 +40,7 @@ type TaskManager interface {
 
 type TaskManagerImpl struct {
 	sequence       int
+	sequenceFile   string
 	started        bool
 	stop           chan bool
 	threads        map[string]chan Task
@@ -44,6 +49,10 @@ type TaskManagerImpl struct {
 	cancel         map[int]context.CancelFunc
 	tasks          map[int]Task
 	saveRuns       bool
+}
+
+func (tm *TaskManagerImpl) incrementSequence() {
+
 }
 
 func (tm *TaskManagerImpl) Cancel(id int) error {
@@ -93,6 +102,7 @@ func (tm *TaskManagerImpl) Add(t Task) error {
 	}
 	tm.sequence++
 	t.setId(tm.sequence)
+	writeSequence(tm.sequence)
 	tm.tasks[t.GetId()] = t
 	return nil
 }
@@ -128,14 +138,54 @@ func GetTaskManager() TaskManager {
 	return tm
 }
 
+func readSequence() int {
+	rd := path.Join(path.Dir(viper.GetString("run_dir")), "sequence")
+	seqFile, err := os.Open(rd)
+	var seq int
+	if err != nil {
+		log.Printf("Cannot open sequence file %s Error: %s", rd, err)
+		seq = 0
+	}
+	seqBytes, err := ioutil.ReadAll(seqFile)
+	if err != nil {
+		log.Printf("Cannot read sequence file %s Error: %s", rd, err)
+		seq = 0
+	}
+	seq, err = strconv.Atoi(string(seqBytes))
+	if err != nil {
+		log.Printf("Cannot convert sequence %s form file %s Error: %s", seqBytes, rd, err)
+		seq = 0
+	}
+	err = seqFile.Close()
+	if err != nil {
+		log.Printf("Cannot close sequence file %s Error: %s", rd, err)
+	}
+	return seq
+}
+
+func writeSequence(i int) {
+	rd := path.Join(path.Dir(viper.GetString("run_dir")), "sequence")
+	seqFile, err := os.Open(rd)
+	_, err = seqFile.Write([]byte(strconv.Itoa(i)))
+	if err != nil {
+		if DEBUG {
+			log.Printf("Cannot save sequence %d to file %s Error: %s", i, rd, err)
+		}
+	}
+	err = seqFile.Close()
+	if err != nil {
+		log.Printf("Cannot close sequence file %s Error: %s", rd, err)
+	}
+}
+
 func NewTaskManager() TaskManager {
 	return &TaskManagerImpl{started: false,
 		stop:     make(chan bool),
-		sequence: 0,
+		sequence: readSequence(),
 		threads:  make(map[string]chan Task),
 		cancel:   make(map[int]context.CancelFunc),
 		tasks:    make(map[int]Task),
-		saveRuns: viper.GetBool("save"),
+		saveRuns: !viper.GetBool("dismiss_out"),
 	}
 }
 
