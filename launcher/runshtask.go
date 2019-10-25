@@ -17,6 +17,37 @@ import (
 	"tfChek/storer"
 )
 
+type RunShTask struct {
+	Name       string
+	Id         int
+	Command    string
+	Args       []string
+	StateLock  string
+	Context    context.Context
+	Status     TaskStatus
+	Socket     chan *websocket.Conn
+	out, err   io.Reader
+	in         io.Writer
+	inR        io.ReadCloser
+	outW, errW io.WriteCloser
+	save       bool
+	GitManager git.Manager
+	sink       bytes.Buffer
+	authors    []string
+}
+
+func (rst *RunShTask) SetGitManager(manager git.Manager) {
+	rst.GitManager = manager
+}
+
+func (rst *RunShTask) SetAuthors(authors []string) {
+	rst.authors = authors
+}
+
+func (rst *RunShTask) GetAuthors() *[]string {
+	return &rst.authors
+}
+
 func (rst *RunShTask) Register() error {
 	if rst.Status == misc.OPEN {
 		rst.Status = misc.REGISTERED
@@ -56,7 +87,7 @@ func (rst *RunShTask) Done() error {
 			if o == "" {
 				o = misc.NOOUTPUT
 			}
-			data := github.NewPRData(rst.Id, true, &o)
+			data := github.NewTaskResult(rst.Id, true, &o, rst.GetAuthors())
 			c <- data
 		}
 		return nil
@@ -68,6 +99,16 @@ func (rst *RunShTask) Done() error {
 func (rst *RunShTask) Fail() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.FAILED
+		manager := github.GetManager()
+		if manager != nil {
+			c := manager.GetChannel()
+			o := rst.GetOut()
+			if o == "" {
+				o = misc.NOOUTPUT
+			}
+			data := github.NewTaskResult(rst.Id, false, &o, rst.GetAuthors())
+			c <- data
+		}
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be failed, because it has been not started. Current state number is %d", rst.Status)}
@@ -77,29 +118,20 @@ func (rst *RunShTask) Fail() error {
 func (rst *RunShTask) TimeoutFail() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.TIMEOUT
+		manager := github.GetManager()
+		if manager != nil {
+			c := manager.GetChannel()
+			o := rst.GetOut()
+			if o == "" {
+				o = misc.NOOUTPUT
+			}
+			data := github.NewTaskResult(rst.Id, false, &o, rst.GetAuthors())
+			c <- data
+		}
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be timed out, because it has been not started. Current state number is %d", rst.Status)}
 	}
-}
-
-type RunShTask struct {
-	Task
-	Name       string
-	Id         int
-	Command    string
-	Args       []string
-	StateLock  string
-	Context    context.Context
-	Status     TaskStatus
-	Socket     chan *websocket.Conn
-	out, err   io.Reader
-	in         io.Writer
-	inR        io.ReadCloser
-	outW, errW io.WriteCloser
-	save       bool
-	GitManager git.Manager
-	sink       bytes.Buffer
 }
 
 func (rst *RunShTask) GetOut() string {

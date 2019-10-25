@@ -206,12 +206,6 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	//bytes, err := json.MarshalIndent(payload, "WEBHOOK:\t", "\t")
-	//if err != nil {
-	//	log.Printf("Cannot marshal webhook. Error: %s", err)
-	//} else {
-	//	log.Printf("Got webhook:\n %s", bytes)
-	//}
 	switch payload.(type) {
 	case github.PushPayload:
 		pushPayload := payload.(github.PushPayload)
@@ -246,9 +240,10 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 					if err != nil {
 						log.Printf("Cannot get Git manager")
 					}
-					rst, ok := task.(*launcher.RunShTask)
-					if ok {
-						rst.GitManager = gitMan
+					if gaTask, ok := task.(launcher.GitHubAwareTask); ok {
+						gaTask.SetGitManager(gitMan)
+						authors := fetch_authors(&pushPayload)
+						gaTask.SetAuthors(*authors)
 					}
 					err = tm.LaunchById(taskId)
 					if err != nil {

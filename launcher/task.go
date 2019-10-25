@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"tfChek/git"
 	"tfChek/misc"
 	"tfChek/storer"
 )
@@ -20,6 +21,13 @@ type TaskStatus uint8
 
 func (se *StateError) Error() string {
 	return se.msg
+}
+
+type GitHubAwareTask interface {
+	Task
+	SetGitManager(manager git.Manager)
+	SetAuthors(authors []string)
+	GetAuthors() *[]string
 }
 
 type Task interface {

@@ -1,6 +1,7 @@
 package github
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"sync"
@@ -11,24 +12,25 @@ var ml sync.Mutex
 var m *Manager = nil
 
 type Manager struct {
-	data    chan *PRData
-	client  GitHubClient
+	data    chan *TaskResult
+	client  Client
 	stopped bool
 }
 
-type PRData struct {
+type TaskResult struct {
 	taskId     int
 	successful bool
 	log        *string
+	authors    *[]string
 }
 
-func NewPRData(taskId int, successful bool, output *string) *PRData {
-	return &PRData{log: output, successful: successful, taskId: taskId}
+func NewTaskResult(taskId int, successful bool, output *string, authors *[]string) *TaskResult {
+	return &TaskResult{log: output, successful: successful, taskId: taskId, authors: authors}
 }
 
 func InitManager(repository, owner, token string) {
 	ml.Lock()
-	s := make(chan *PRData, 20)
+	s := make(chan *TaskResult, 20)
 	c := NewClientRunSH(repository, owner, token)
 	m = &Manager{data: s, client: c, stopped: false}
 	ml.Unlock()
@@ -56,20 +58,47 @@ func (m *Manager) starter() {
 	}
 }
 
-func process(prd *PRData) {
+func process(prd *TaskResult) {
 	branch := misc.TASKPREFIX + strconv.Itoa(prd.taskId)
-	number, err := m.client.CreatePR(branch)
-	if err != nil {
-		log.Printf("Failed to create PR Error: %s", err)
-	} else {
-		log.Printf("New PR #%d has been created", *number)
+	switch prd.successful {
+	case true:
+		number, err := m.client.CreatePR(branch)
+		if err != nil {
+			log.Printf("Failed to create GitHub PR Error: %s", err)
+		} else {
+			log.Printf("New PR #%d has been created", *number)
+			err = m.client.RequestReview(*number, prd.authors)
+			if err != nil {
+				log.Println("Failed to assign reviewers")
+			}
+			err = m.client.Comment(*number, prd.log)
+			if err != nil {
+				log.Printf("Cannot comment PR %d Error: %s", number, err)
+			}
+			err = m.client.Review(*number, "run.sh finished ")
+			if err != nil {
+				log.Printf("Cannot review PR %d Error: %s", number, err)
+			}
+			message := fmt.Sprintf("Automatically merged by tfChek (Authors %v)", *prd.authors)
+			sha, err := m.client.Merge(*number, message)
+			if err != nil {
+				log.Printf("Cannot merge branch %s, Error: %s", branch, err)
+			} else {
+				log.Printf("Branch %s has been merged. Merge commit hash %s", branch, *sha)
+			}
+		}
+	case false:
+		number, err := m.client.CreateIssue(branch, prd.authors)
+		if err != nil {
+			log.Printf("Failed to create GitHub Issue Error: %s", err)
+		} else {
+			log.Printf("New Issue #%d has been created", *number)
+			err = m.client.Comment(*number, prd.log)
+			if err != nil {
+				log.Printf("Cannot comment issue %d Error: %s", number, err)
+			}
+		}
 	}
-	err = m.client.RequestReview(*number, &[]string{"maskimko"})
-	if err != nil {
-		log.Println("Failed to assign reviewers")
-	}
-	err = m.client.Comment(*number, prd.log)
-	err = m.client.Review(*number, "run.sh finished ")
 }
 
 //func getOutput(branch string) string{
@@ -97,7 +126,7 @@ func process(prd *PRData) {
 //	return misc.NOOUTPUT
 //}
 
-func (m *Manager) GetChannel() chan<- *PRData {
+func (m *Manager) GetChannel() chan<- *TaskResult {
 	return m.data
 }
 func (m *Manager) Close() {
