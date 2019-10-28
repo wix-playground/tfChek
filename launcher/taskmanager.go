@@ -135,45 +135,57 @@ func GetTaskManager() TaskManager {
 }
 
 func readSequence() int {
-	rd := path.Join(path.Dir(viper.GetString("run_dir")), "sequence")
-	seqFile, err := os.Open(rd)
+	rd := viper.GetString("run_dir")
+	if _, err := os.Stat(rd); os.IsNotExist(err) {
+		log.Printf("Run directory %s does not exist. Creating one", rd)
+		err := os.MkdirAll(rd, 0755)
+		if err != nil {
+			log.Printf("Cannot create run directory %s Error: %s", rd, err)
+		}
+	}
+	rdf := path.Join(rd, "sequence")
+	seqFile, err := os.Open(rdf)
 	var seq int
 	if err != nil {
-		log.Printf("Cannot open sequence file %s Error: %s", rd, err)
+		log.Printf("Cannot open sequence file %s Error: %s", rdf, err)
 		return 0
 	}
 	defer seqFile.Close()
 	seqBytes, err := ioutil.ReadAll(seqFile)
 	if err != nil {
-		log.Printf("Cannot read sequence file %s Error: %s", rd, err)
+		log.Printf("Cannot read sequence file %s Error: %s", rdf, err)
 		return 0
 	}
 	seq, err = strconv.Atoi(string(seqBytes))
 	if err != nil {
-		log.Printf("Cannot convert sequence %s form file %s Error: %s", seqBytes, rd, err)
+		log.Printf("Cannot convert sequence %s form file %s Error: %s", seqBytes, rdf, err)
 		return 0
 	}
+	log.Printf("Starting server from task counter value %d", seq)
 	return seq
 }
 
 func writeSequence(i int) {
-	rundir := path.Dir(viper.GetString("run_dir"))
+	rundir := viper.GetString("run_dir")
 	if _, err := os.Stat(rundir); os.IsNotExist(err) {
 		err := os.MkdirAll(rundir, 0755)
 		if err != nil {
 			log.Printf("Cannot create run directory %s Error: %s", rundir, err)
 		}
 	}
-	rd := path.Join(rundir, "sequence")
-	seqFile, err := os.Open(rd)
+	var seqFile *os.File
+	rdf := path.Join(rundir, "sequence")
+	seqFile, err := os.OpenFile(rdf, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
-		log.Printf("Cannot open sequence file %s Error %s", rd, err)
+		log.Printf("Cannot open sequence file %s Error %s", rdf, err)
+		return
 	}
+
 	defer seqFile.Close()
 	_, err = seqFile.Write([]byte(strconv.Itoa(i)))
 	if err != nil {
 		if DEBUG {
-			log.Printf("Cannot save sequence %d to file %s Error: %s", i, rd, err)
+			log.Printf("Cannot save sequence %d to file %s Error: %s", i, rdf, err)
 		}
 	}
 

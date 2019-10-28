@@ -75,10 +75,12 @@ func process(prd *TaskResult) {
 			if err != nil {
 				log.Printf("Cannot comment PR %d Error: %s", number, err)
 			}
-			err = m.client.Review(*number, "run.sh finished ")
-			if err != nil {
-				log.Printf("Cannot review PR %d Error: %s", number, err)
-			}
+			//Disable review as there is no reason to perform review by the push author
+			//Requesting reviewers is just enough
+			//err = m.client.Review(*number, "run.sh finished ")
+			//if err != nil {
+			//	log.Printf("Cannot review PR %d Error: %s", number, err)
+			//}
 			message := fmt.Sprintf("Automatically merged by tfChek (Authors %v)", *prd.authors)
 			sha, err := m.client.Merge(*number, message)
 			if err != nil {
