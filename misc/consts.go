@@ -31,6 +31,7 @@ const (
 	WEBHOOKRUNSH   = WEBHOOKPATH + runshchunk
 	HEALTHCHECK    = "/health/is_alive"
 	READINESSCHECK = "/health/is_ready"
+	OUTDIR         = "out_dir"
 )
 
 const NOOUTPUT = "---NO OUTPUT AVAILABLE---"

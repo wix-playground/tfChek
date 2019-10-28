@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"tfChek/misc"
 )
 
 func Save2FileFromReader(id int, in io.Reader) error {
@@ -42,7 +43,7 @@ func Save2FileFromReader(id int, in io.Reader) error {
 }
 
 func Save2FileFromWriter(id int) (io.WriteCloser, error) {
-	dir := viper.GetString("outdir")
+	dir := viper.GetString(misc.OUTDIR)
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
 		os.MkdirAll(dir, 0755)

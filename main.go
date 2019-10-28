@@ -15,15 +15,15 @@ import (
 )
 
 func config() {
+	//TODO: Use constants here
 	flag.Int("port", misc.PORT, "Port application will listen to")
 	flag.Bool("debug", false, "Print debug messages")
-	flag.String("out_dir", "/var/tfChek/out/", "Directory to save output of the task runs")
+	flag.String(misc.OUTDIR, "/var/tfChek/out/", "Directory to save output of the task runs")
 	flag.Bool("dismiss_out", true, "Save tasks output to the files in outdir")
 	flag.String("token", "", "GitHub API access token")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 	viper.BindPFlags(pflag.CommandLine)
-	viper.SetDefault("debug", false)
 	viper.SetDefault("qlength", 10)
 	viper.SetDefault("timeout", 300)
 	viper.SetDefault("repo_owner", "wix-system")
