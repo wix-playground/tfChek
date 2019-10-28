@@ -1,0 +1,12 @@
+---
+
+#port: 8085
+debug: true
+timeout: 600
+run_dir: out
+repopath: /tmp/tfchek-testrepo
+repoowner: wix-playground
+repo_dir: /tmp/tfChek-repodir
+repo_name: tfChek-testrepo
+
+
