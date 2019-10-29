@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"os"
@@ -70,7 +71,23 @@ func GetStatusString(status TaskStatus) string {
 	}
 }
 
-var DEBUG bool = false
+var DEBUG bool = viper.GetBool(misc.DebugKey)
+
+type BackgroundTaskImpl struct {
+	Task
+	Name       string
+	Id         int
+	Command    string
+	Args       []string
+	Context    context.Context
+	Status     TaskStatus
+	Socket     chan *websocket.Conn
+	out, err   io.Reader
+	in         io.Writer
+	inR        io.ReadCloser
+	outW, errW io.WriteCloser
+	save       bool
+}
 
 func (bti *BackgroundTaskImpl) Register() error {
 	if bti.Status == misc.OPEN {
@@ -128,22 +145,6 @@ func (bti *BackgroundTaskImpl) TimeoutFail() error {
 	}
 }
 
-type BackgroundTaskImpl struct {
-	Task
-	Name       string
-	Id         int
-	Command    string
-	Args       []string
-	Context    context.Context
-	Status     TaskStatus
-	Socket     chan *websocket.Conn
-	out, err   io.Reader
-	in         io.Writer
-	inR        io.ReadCloser
-	outW, errW io.WriteCloser
-	save       bool
-}
-
 func (bti *BackgroundTaskImpl) GetStatus() TaskStatus {
 	return bti.Status
 }
@@ -185,7 +186,7 @@ func (bti *BackgroundTaskImpl) Run() error {
 	defer bti.inR.Close()
 	//Get working directory
 	var cwd string
-	if d, ok := bti.Context.Value(misc.WD).(string); ok {
+	if d, ok := bti.Context.Value(misc.WdKey).(string); ok {
 		cwd = d
 	} else {
 		d, err := os.Getwd()
@@ -197,7 +198,7 @@ func (bti *BackgroundTaskImpl) Run() error {
 	log.Printf("Task id: %d working directory: %s", bti.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
-	if d, ok := bti.Context.Value(misc.ENVVARS).(map[string]string); ok {
+	if d, ok := bti.Context.Value(misc.EnvVarsKey).(map[string]string); ok {
 		for k, v := range d {
 			sysenv = append(sysenv, fmt.Sprintf("%s=%s", k, v))
 		}

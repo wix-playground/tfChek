@@ -204,7 +204,7 @@ func (rst *RunShTask) prepareGit() error {
 			return err
 		}
 	}
-	branch := fmt.Sprintf("%s%d", misc.TASKPREFIX, rst.Id)
+	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
 	err := rst.GitManager.Checkout(branch)
 	if err != nil {
 		log.Printf("Cannot checkout branch ")
@@ -237,7 +237,7 @@ func (rst *RunShTask) Run() error {
 	log.Printf("Task id: %d working directory: %s", rst.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
-	if d, ok := rst.Context.Value(misc.ENVVARS).(map[string]string); ok {
+	if d, ok := rst.Context.Value(misc.EnvVarsKey).(map[string]string); ok {
 		for k, v := range d {
 			sysenv = append(sysenv, fmt.Sprintf("%s=%s", k, v))
 		}

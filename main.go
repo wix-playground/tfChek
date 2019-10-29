@@ -14,31 +14,40 @@ import (
 	"tfChek/misc"
 )
 
+const (
+	MajorVersion = 0
+	MinorVersion = 1
+	Revision     = 0
+)
+
 func config() {
-	//TODO: Use constants here
-	flag.Int("port", misc.PORT, "Port application will listen to")
-	flag.Bool("debug", false, "Print debug messages")
-	flag.String(misc.OUTDIR, "/var/tfChek/out/", "Directory to save output of the task runs")
-	flag.Bool("dismiss_out", true, "Save tasks output to the files in outdir")
-	flag.String("token", "", "GitHub API access token")
+	flag.Int(misc.PortKey, misc.PORT, "Port application will listen to")
+	flag.Bool(misc.DebugKey, false, "Print debug messages")
+	flag.String(misc.OutDirKey, "/var/tfChek/out/", "Directory to save output of the task runs")
+	flag.Bool(misc.DismissOutKey, true, "Save tasks output to the files in outdir")
+	flag.String(misc.TokenKey, "", "GitHub API access token")
+	flag.Bool(misc.VersionKey, false, "Show the version info")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
-	viper.BindPFlags(pflag.CommandLine)
-	viper.SetDefault("qlength", 10)
-	viper.SetDefault("timeout", 300)
-	viper.SetDefault("repo_owner", "wix-system")
-	viper.SetDefault("webhook_secret", "notAsecretAtAll:)")
-	viper.SetDefault("repo_dir", "/var/tfChek/repos_by_state/")
-	viper.SetDefault("repo_name", "production_42")
-	viper.SetDefault("run_dir", "/var/run/tfChek/")
-	viper.SetEnvPrefix("TFCHEK")
+	err := viper.BindPFlags(pflag.CommandLine)
+	if err != nil {
+		log.Fatalf("Cannot bind flags. Error: %s", err)
+	}
+	viper.SetDefault(misc.QueueLengthKey, 10)
+	viper.SetDefault(misc.TimeoutKey, 300)
+	viper.SetDefault(misc.RepoOwnerKey, "wix-system")
+	viper.SetDefault(misc.WebHookSecretKey, "notAsecretAtAll:)")
+	viper.SetDefault(misc.RepoDirKey, "/var/tfChek/repos_by_state/")
+	viper.SetDefault(misc.RepoNameKey, "production_42")
+	viper.SetDefault(misc.RunDirKey, "/var/run/tfChek/")
+	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)
 	viper.AddConfigPath("/opt/wix/" + misc.APPNAME + "/etc/")
 	viper.AddConfigPath("/configs/" + misc.APPNAME)
 	viper.AddConfigPath("$HOME/." + misc.APPNAME)
 	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
+	err = viper.ReadInConfig()
 	if err != nil {
 		log.Printf("Cannot read configuration. Error: %s", err)
 	}
@@ -67,9 +76,9 @@ func initialize() {
 	config()
 	//Start GitHub API manager
 
-	repoName := viper.GetString("repo_name")
-	repoOwner := viper.GetString("repo_owner")
-	token := viper.GetString("token")
+	repoName := viper.GetString(misc.RepoNameKey)
+	repoOwner := viper.GetString(misc.RepoOwnerKey)
+	token := viper.GetString(misc.TokenKey)
 	github.InitManager(repoName, repoOwner, token)
 	github.GetManager().Start()
 	//Start task manager
@@ -78,11 +87,15 @@ func initialize() {
 	go tm.Start()
 }
 
+func showVersion() {
+	fmt.Printf("%d.%d.%d", MajorVersion, MinorVersion, Revision)
+}
+
 func main() {
 	initialize()
 	defer launcher.GetTaskManager().Close()
 	defer github.GetManager().Close()
 	fmt.Println("Starting server")
 	router := setupRoutes()
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("port")), router))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt(misc.PortKey)), router))
 }

@@ -11,12 +11,27 @@ const (
 )
 
 const (
-	WD      = "WORKING_DIRECTORY"
-	ENVVARS = "ENVIRONMENT_VARIABLES"
+	WdKey            = "WORKING_DIRECTORY"
+	EnvVarsKey       = "ENVIRONMENT_VARIABLES"
+	OutDirKey        = "out_dir"
+	DebugKey         = "debug"
+	PortKey          = "port"
+	DismissOutKey    = "dismiss_out"
+	TokenKey         = "token"
+	VersionKey       = "version"
+	QueueLengthKey   = "qlength"
+	TimeoutKey       = "timeout"
+	RepoOwnerKey     = "repo_owner"
+	WebHookSecretKey = "webhook_secret"
+	RepoDirKey       = "repo_dir"
+	RepoNameKey      = "repo_name"
+	RunDirKey        = "run_dir"
 )
 
-const TASKPREFIX = "tfci-"
-
+const (
+	TaskPrefix = "tfci-"
+	EnvPrefix  = "TFCHEK"
+)
 const (
 	STATICDIR      = "/static/"
 	WEBHOOKPATH    = "/webhook/"
@@ -31,7 +46,6 @@ const (
 	WEBHOOKRUNSH   = WEBHOOKPATH + runshchunk
 	HEALTHCHECK    = "/health/is_alive"
 	READINESSCHECK = "/health/is_ready"
-	OUTDIR         = "out_dir"
 )
 
 const NOOUTPUT = "---NO OUTPUT AVAILABLE---"

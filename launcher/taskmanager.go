@@ -135,7 +135,7 @@ func GetTaskManager() TaskManager {
 }
 
 func readSequence() int {
-	rd := viper.GetString("run_dir")
+	rd := viper.GetString(misc.RunDirKey)
 	if _, err := os.Stat(rd); os.IsNotExist(err) {
 		log.Printf("Run directory %s does not exist. Creating one", rd)
 		err := os.MkdirAll(rd, 0755)
@@ -166,7 +166,7 @@ func readSequence() int {
 }
 
 func writeSequence(i int) {
-	rundir := viper.GetString("run_dir")
+	rundir := viper.GetString(misc.RunDirKey)
 	if _, err := os.Stat(rundir); os.IsNotExist(err) {
 		err := os.MkdirAll(rundir, 0755)
 		if err != nil {
@@ -198,7 +198,7 @@ func NewTaskManager() TaskManager {
 		threads:  make(map[string]chan Task),
 		cancel:   make(map[int]context.CancelFunc),
 		tasks:    make(map[int]Task),
-		saveRuns: !viper.GetBool("dismiss_out"),
+		saveRuns: !viper.GetBool(misc.DismissOutKey),
 	}
 }
 
@@ -209,7 +209,7 @@ func (tm *TaskManagerImpl) Launch(bt Task) error {
 	if tm.threads[bt.SyncName()] == nil {
 		tm.lock.Lock()
 		if tm.threads[bt.SyncName()] == nil {
-			tm.threads[bt.SyncName()] = make(chan Task, viper.GetInt("qlength"))
+			tm.threads[bt.SyncName()] = make(chan Task, viper.GetInt(misc.QueueLengthKey))
 		}
 		tm.lock.Unlock()
 	}

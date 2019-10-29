@@ -12,9 +12,10 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"tfChek/misc"
 )
 
-var Debug bool
+var Debug bool = viper.GetBool(misc.DebugKey)
 var lock sync.Mutex
 
 //Key split by ';' on url and state
@@ -83,7 +84,7 @@ func GetManager(url, state string) (Manager, error) {
 		if repomngrs[key] == nil {
 			urlChunks := strings.Split(url, "/")
 			repoName := urlChunks[len(urlChunks)-1]
-			path := fmt.Sprintf("%s/%s/%s", viper.GetString("repo_dir"), repoName, state)
+			path := fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state)
 			repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path}
 		}
 		lock.Unlock()
@@ -246,11 +247,12 @@ func getFetchOptions(gitRef plumbing.ReferenceName, remote *git.Remote) (*git.Fe
 	fo := &git.FetchOptions{RemoteName: remote.Config().Name, Depth: 10, RefSpecs: *refSpecs}
 	return fo, nil
 }
-func getFetchAllOptions(remote *git.Remote) *git.FetchOptions {
-	headRefSpec := config.RefSpec(fmt.Sprintf("+HEAD:refs/remotes/%s/HEAD", remote.Config().Name))
-	branchesSpec := config.RefSpec(fmt.Sprintf("+refs/heads/*:refs/remotes/%s/*", remote.Config().Name))
-	return &git.FetchOptions{RemoteName: remote.Config().Name, Depth: 10, RefSpecs: []config.RefSpec{headRefSpec, branchesSpec}}
-}
+
+//func getFetchAllOptions(remote *git.Remote) *git.FetchOptions {
+//	headRefSpec := config.RefSpec(fmt.Sprintf("+HEAD:refs/remotes/%s/HEAD", remote.Config().Name))
+//	branchesSpec := config.RefSpec(fmt.Sprintf("+refs/heads/*:refs/remotes/%s/*", remote.Config().Name))
+//	return &git.FetchOptions{RemoteName: remote.Config().Name, Depth: 10, RefSpecs: []config.RefSpec{headRefSpec, branchesSpec}}
+//}
 
 func (b *BuiltInManager) Clone() error {
 	var prog io.Writer = nil

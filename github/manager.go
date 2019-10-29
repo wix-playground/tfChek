@@ -59,7 +59,7 @@ func (m *Manager) starter() {
 }
 
 func process(prd *TaskResult) {
-	branch := misc.TASKPREFIX + strconv.Itoa(prd.taskId)
+	branch := misc.TaskPrefix + strconv.Itoa(prd.taskId)
 	switch prd.successful {
 	case true:
 		number, err := m.client.CreatePR(branch)
@@ -104,7 +104,7 @@ func process(prd *TaskResult) {
 }
 
 //func getOutput(branch string) string{
-//	if strings.HasPrefix(branch, misc.TASKPREFIX) {
+//	if strings.HasPrefix(branch, misc.TaskPrefix) {
 //		chunks := strings.Split(branch,"-")
 //		if len(chunks) != 2 {
 //			log.Printf("Cannot get task id from branch name %s", branch)

@@ -124,7 +124,7 @@ func RunShEnv(w http.ResponseWriter, r *http.Request) {
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
 
-	runsh(w, r, env, layer, time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
+	runsh(w, r, env, layer, time.Duration(viper.GetInt(misc.TimeoutKey))*time.Second, &envVars)
 }
 
 func Cancel(w http.ResponseWriter, r *http.Request) {
@@ -180,12 +180,12 @@ func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
 	layer := v["Layer"]
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
-	runsh(w, r, env, layer, time.Duration(viper.GetInt("timeout"))*time.Second, &envVars)
+	runsh(w, r, env, layer, time.Duration(viper.GetInt(misc.TimeoutKey))*time.Second, &envVars)
 }
 
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
-	hook, _ := github.New(github.Options.Secret(viper.GetString("webhook_secret")))
+	hook, _ := github.New(github.Options.Secret(viper.GetString(misc.WebHookSecretKey)))
 	payload, err := hook.Parse(r, github.PushEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
@@ -193,7 +193,10 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 			errmsg := fmt.Sprintf("Unknown event. Error: %s", err)
 			log.Println(errmsg)
 			w.WriteHeader(404)
-			w.Write([]byte(errmsg))
+			_, err := w.Write([]byte(errmsg))
+			if err != nil {
+				log.Printf("Cannot post message '%s' Error: %s", errmsg, err)
+			}
 			return
 		} else {
 			if e, ok := err.(*json.SyntaxError); ok {
@@ -202,7 +205,10 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 			errmsg := fmt.Sprintf("Got error %s", err)
 			log.Println(errmsg)
 			w.WriteHeader(400)
-			w.Write([]byte(errmsg))
+			_, err := w.Write([]byte(errmsg))
+			if err != nil {
+				log.Printf("Cannot post message '%s' Error: %s", errmsg, err)
+			}
 			return
 		}
 	}
@@ -212,7 +218,7 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 		if pushPayload.Created {
 			//branchName := plumbing.NewBranchReferenceName(pushPayload.Ref).Short()
 			branchName := strings.ReplaceAll(pushPayload.Ref, "refs/heads/", "")
-			matched, err := regexp.Match("^"+misc.TASKPREFIX+"[0-9]+", []byte(branchName))
+			matched, err := regexp.Match("^"+misc.TaskPrefix+"[0-9]+", []byte(branchName))
 			if err != nil {
 				log.Printf("Cannot match against regex")
 			}
@@ -224,7 +230,10 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 					errmsg := fmt.Sprintf("Cannot parse task id %s", chunks[1])
 					log.Println(errmsg)
 					w.WriteHeader(400)
-					w.Write([]byte(errmsg))
+					_, err := w.Write([]byte(errmsg))
+					if err != nil {
+						log.Printf("Cannot post message '%s' Error: %s", errmsg, err)
+					}
 					return
 				} else {
 
@@ -233,7 +242,11 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 					if task == nil {
 						log.Printf("Cannot find task by id: %d", taskId)
 						w.WriteHeader(404)
-						w.Write([]byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
+						errmsg := fmt.Sprintf("Cannot find task by id: %d", taskId)
+						_, err := w.Write([]byte(errmsg))
+						if err != nil {
+							log.Printf("Cannot post message '%s' Error: %s", errmsg, err)
+						}
 						return
 					}
 					gitMan, err := git.GetManager(pushPayload.Repository.GitURL, task.SyncName())
@@ -250,7 +263,10 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 						errmsg := fmt.Sprintf("Cannot launch task id %d. Error: %s", taskId, err)
 						log.Println(errmsg)
 						w.WriteHeader(400)
-						w.Write([]byte(errmsg))
+						_, err = w.Write([]byte(errmsg))
+						if err != nil {
+							log.Printf("Cannot post message '%s' Error: %s", errmsg, err)
+						}
 					} else {
 						w.WriteHeader(202)
 					}
@@ -275,7 +291,7 @@ func fetch_authors(payload *github.PushPayload) *[]string {
 	}
 	res := make([]string, len(author_usernames))
 	n := 0
-	for i, _ := range author_usernames {
+	for i := range author_usernames {
 		res[n] = i
 		n++
 	}
@@ -303,7 +319,7 @@ func runsh(w http.ResponseWriter, r *http.Request, env, layer string, timeout ti
 	ctx, cancel := context.WithTimeout(
 		context.WithValue(
 			context.Background(),
-			misc.ENVVARS, envVars),
+			misc.EnvVarsKey, envVars),
 		timeout)
 	bt, err := tm.AddRunSh(cmd, ctx)
 	if err != nil {
@@ -311,16 +327,31 @@ func runsh(w http.ResponseWriter, r *http.Request, env, layer string, timeout ti
 		_, e := w.Write([]byte(em))
 		if e != nil {
 			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+			return
 		}
 	} else {
 		if viper.GetBool("debug") {
 			log.Printf("Task %d has been added", bt.GetId())
 		}
 	}
-	tm.RegisterCancel(bt.GetId(), cancel)
-	w.WriteHeader(201)
-	_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
-	if err != nil {
-		log.Printf("Cannot write response. Error: %s", err)
+	if bt != nil {
+		err = tm.RegisterCancel(bt.GetId(), cancel)
+		if err != nil {
+			log.Printf("Cannot register cancel function. Task (id: %d) will be impossible to cancel. Error: %s", bt.GetId(), err)
+		}
+		w.WriteHeader(201)
+		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
+		if err != nil {
+			log.Printf("Cannot write response. Error: %s", err)
+		}
+	} else {
+		log.Print("Cannot register cancel function of nil task. This should never happen!")
+		w.WriteHeader(404)
+		errmsg := "Cannot process nil task"
+		_, err = w.Write([]byte(errmsg))
+		if err != nil {
+			log.Printf("Cannot post message '%s'. Error: %s", errmsg, err)
+		}
 	}
+
 }
