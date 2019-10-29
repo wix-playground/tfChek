@@ -12,7 +12,7 @@ _*tfChek*_ performs check of the applied terraform resources.
 Flow
 ====
 
-![Alt](https://drive.google.com/file/d/1opa9ZLSYFvNH9MrZG5J6EtwOGOmks4px/view?usp=sharing)
+![tfChek flow](tfChek.svg)
 
 Changelog
 
