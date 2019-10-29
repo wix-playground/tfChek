@@ -9,7 +9,10 @@ _*tfChek*_ performs check of the applied terraform resources.
  GitHub will send an appropriate email notification.
  * In case of failed check the GitHub issue will be created and assigned to the author of the commit
 
+Flow
+====
 
+![Alt](https://drive.google.com/file/d/1opa9ZLSYFvNH9MrZG5J6EtwOGOmks4px/view?usp=sharing)
 
 Changelog
 
