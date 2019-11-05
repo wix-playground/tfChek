@@ -65,6 +65,10 @@ func setupRoutes() *mux.Router {
 	router.Path(misc.HEALTHCHECK).HandlerFunc(api.HealthCheck)
 	router.Path(misc.READINESSCHECK).HandlerFunc(api.ReadinessCheck)
 	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		log.Printf("Request %s headers:", request.URL.String())
+		for k, v := range request.Header {
+			log.Printf("\tHeader field %q, Value %q\n", k, v)
+		}
 		http.ServeFile(writer, request, "./static/index.html")
 	})
 	return router
