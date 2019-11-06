@@ -94,7 +94,7 @@
     </style>
   </head>
   <body>
-    <script src="script/ansi_up/ansi_up.js" type="text/javascript"></script>
+    <script type="application/javascript" src="static/script/ansi_up/ansi_up.js" ></script>
     <div id="messages"></div>
 
     <script type="application/javascript">
@@ -194,7 +194,7 @@
 
           socket.onerror = error => {
             console.log("Socket Error: ", error);
-            document.getElementById("messages").innerText = "Cannot connec to to websocket"
+            document.getElementById("messages").innerText = "Cannot connect to to websocket"
           };
         } else {
           document.getElementById("messages").innerText = "You have to query task by id number. (Add URL suffix like like '?id=1')"

@@ -28,6 +28,13 @@ var upgrader = websocket.Upgrader{
 }
 
 func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
+	//Debug websocket
+	log.Printf("Request %s headers:", r.URL.String())
+	for k, v := range r.Header {
+		log.Printf("\tHeader field %q, Value %q\n", k, v)
+	}
+	//End Debug
+
 	tm := launcher.GetTaskManager()
 	vars := mux.Vars(r)
 	id := vars["Id"]
