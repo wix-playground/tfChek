@@ -49,29 +49,46 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 	taskId, err := strconv.Atoi(id)
 	if err != nil {
-		log.Println("Cannot convert parse task id")
-		//TODO: add error handling
+		erm := fmt.Sprintf("Cannot convert parse task id %s Error: %s", id, err)
+		log.Println(erm)
+		_, err := w.Write([]byte(erm))
+		if err != nil {
+			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
+		}
+		w.WriteHeader(500)
+		return
 	}
-
+	bt := tm.Get(taskId)
+	if bt == nil {
+		erm := fmt.Sprintf("Cannot find task by id: %d", taskId)
+		log.Println(erm)
+		_, err := w.Write([]byte(erm))
+		if err != nil {
+			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
+		}
+		w.WriteHeader(404)
+		//err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
+		//if err != nil {
+		//	log.Printf("Cannot find task by id: %d Error: %s", taskId, err)
+		//}
+		return
+	}
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
-		//TODO: log error and handle it
-	}
-	log.Println("Client connected to run.sh Env websocket")
-	bt := tm.Get(taskId)
-	if bt == nil {
-		log.Printf("Cannot find task by id: %d", taskId)
-		w.WriteHeader(404)
-		err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
+		erm := fmt.Sprintf("Cannot upgrade connection to use websocket. Error: %s", err)
+		log.Println(erm)
+		_, err := w.Write([]byte(erm))
 		if err != nil {
-			log.Printf("Cannot find task by id: %d Error: %s", taskId, err)
+			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
 		}
+		w.WriteHeader(500)
 		return
 	}
+	log.Println("Client connected to run.sh Env websocket")
+
 	errc := make(chan error)
 	err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
 	if err != nil {
