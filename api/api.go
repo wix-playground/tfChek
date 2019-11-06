@@ -39,11 +39,13 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["Id"]
 	if id == "" {
-		log.Println("Cannot run with no id")
+		erm := "Cannot run with no id"
+		log.Println(erm)
+		w.Header().Add("Reason", erm)
 		w.WriteHeader(404)
-		_, err := w.Write([]byte("Cannot run with no id"))
+		_, err := w.Write([]byte(erm))
 		if err != nil {
-			log.Printf("Cannot run task id %s Error: %s", id, err)
+			log.Printf(erm+" Error: %s", err)
 		}
 		return
 	}
@@ -51,22 +53,24 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		erm := fmt.Sprintf("Cannot convert parse task id %s Error: %s", id, err)
 		log.Println(erm)
+		w.Header().Add("Reason", erm)
+		w.WriteHeader(500)
 		_, err := w.Write([]byte(erm))
 		if err != nil {
 			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
 		}
-		w.WriteHeader(500)
 		return
 	}
 	bt := tm.Get(taskId)
 	if bt == nil {
 		erm := fmt.Sprintf("Cannot find task by id: %d", taskId)
 		log.Println(erm)
+		w.Header().Add("Reason", erm)
+		w.WriteHeader(404)
 		_, err := w.Write([]byte(erm))
 		if err != nil {
 			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
 		}
-		w.WriteHeader(404)
 		//err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
 		//if err != nil {
 		//	log.Printf("Cannot find task by id: %d Error: %s", taskId, err)
@@ -80,11 +84,12 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		erm := fmt.Sprintf("Cannot upgrade connection to use websocket. Error: %s", err)
 		log.Println(erm)
+		w.WriteHeader(500)
+		w.Header().Add("Reason", erm)
 		_, err := w.Write([]byte(erm))
 		if err != nil {
 			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
 		}
-		w.WriteHeader(500)
 		return
 	}
 	log.Println("Client connected to run.sh Env websocket")
