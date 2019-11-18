@@ -17,7 +17,7 @@ import (
 const (
 	MajorVersion = 0
 	MinorVersion = 4
-	Revision     = 7
+	Revision     = 9
 )
 
 func config() {
@@ -66,10 +66,10 @@ func setupRoutes() *mux.Router {
 	router.Path(misc.READINESSCHECK).HandlerFunc(api.ReadinessCheck)
 	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		//Debug websocket
-		log.Printf("Request %s headers:", request.URL.String())
-		for k, v := range request.Header {
-			log.Printf("\tHeader field %q, Value %q\n", k, v)
-		}
+		//log.Printf("Request %s headers:", request.URL.String())
+		//for k, v := range request.Header {
+		//	log.Printf("\tHeader field %q, Value %q\n", k, v)
+		//}
 		//End debug
 		http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
 	})
@@ -85,6 +85,10 @@ func initialize() {
 	repoName := viper.GetString(misc.RepoNameKey)
 	repoOwner := viper.GetString(misc.RepoOwnerKey)
 	token := viper.GetString(misc.TokenKey)
+	if viper.GetBool(misc.DebugKey) {
+		misc.Debug = true
+		misc.LogConfig()
+	}
 	github.InitManager(repoName, repoOwner, token)
 	github.GetManager().Start()
 	//Start task manager
