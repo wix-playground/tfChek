@@ -4,7 +4,7 @@ http://maven.apache.org/POM/4.0.0 ">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.wixpress.system</groupId>
     <artifactId>tfchek</artifactId>
-    <version>0.4.11</version>
+    <version>0.4.11-SNAPSHOT</version>
     <developers>
         <developer>
             <name>Maksym Shkolnyi</name>
