@@ -43,13 +43,18 @@ func config() {
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)
-	viper.AddConfigPath("/configs")
+	viper.AddConfigPath("/configs/tfChek.yml")
 	viper.AddConfigPath("/opt/wix/" + misc.APPNAME + "/etc/")
+	viper.AddConfigPath("/etc/" + misc.APPNAME)
 	viper.AddConfigPath("$HOME/." + misc.APPNAME)
 	viper.AddConfigPath(".")
 	err = viper.ReadInConfig()
 	if err != nil {
 		log.Printf("Cannot read configuration. Error: %s", err)
+	} else {
+		if viper.GetBool(misc.DebugKey) {
+			log.Printf("Configuration has been loaded")
+		}
 	}
 
 }
