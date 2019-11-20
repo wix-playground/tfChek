@@ -1,11 +1,14 @@
 ---
-#port: 8085
-debug: true
-timeout: 600
-dismiss_out: false
-run_dir: /var/tfChek/out
-repo_owner: wix-playground
-repo_dir: /var/tfChek/repos
-repo_name: tfChek-testrepo
-qlength_t: <%= databag_config('com.wixpress.system.tfchek','qlength') %>
-#webhook_secret: secret
+debug:  <%= databag_config('com.wixpress.system.tfchek','debug') %>
+timeout:  <%= databag_config('com.wixpress.system.tfchek','timeout') %>
+dismiss_out:  <%= databag_config('com.wixpress.system.tfchek','dismiss_out') %>
+run_dir:  <%= databag_config('com.wixpress.system.tfchek','run_dir') %>
+repo_owner: <%= databag_config('com.wixpress.system.tfchek','repo_owner') %>
+repo_name:  <%= databag_config('com.wixpress.system.tfchek','testkey') %>
+qlength:  <%= databag_config('com.wixpress.system.tfchek','qlength') %>
+webhook_secret:  <%= databag_passwd('com.wixpress.system.tfchek','webhook_secret') %>
+token:  <%= databag_passwd('com.wixpress.system.tfchek','token') %>
+repopath: <%= databag_config('com.wixpress.system.tfchek','repopath') %>
+
+
+
