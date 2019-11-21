@@ -31,7 +31,7 @@ COPY --from=0 /build/tfChek .
 COPY --from=0 /build/tfChek.sh .
 COPY --from=0 /build/templates /templates
 COPY --from=0 /build/static static
-RUN chown -R deployer:deployer * && mkdir /var/tfChek && chown -R deployer:deployer /var/tfChek
+RUN chown -R deployer:deployer * && mkdir /var/tfChek && chown -R deployer:deployer /var/tfChek && mkdir /var/run/tfChek && chown -R deployer:deployer /var/run/tfChek
 #Switch user
 USER deployer
 # Expose port 8080 to the outside world
