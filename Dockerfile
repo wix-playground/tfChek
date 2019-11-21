@@ -29,7 +29,6 @@ RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500
 #Copy files
 COPY --from=0 /build/tfChek .
 COPY --from=0 /build/tfChek.sh .
-#COPY --from=0 /build/tfChek.yml .
 COPY --from=0 /build/templates /templates
 COPY --from=0 /build/static static
 RUN chown -R deployer:deployer * && mkdir /var/tfChek && chown -R deployer:deployer /var/tfChek
