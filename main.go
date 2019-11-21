@@ -43,7 +43,7 @@ func config() {
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)
-	viper.AddConfigPath("/configs/tfChek.yml")
+	viper.AddConfigPath("/configs")
 	viper.AddConfigPath("/opt/wix/" + misc.APPNAME + "/etc/")
 	viper.AddConfigPath("/etc/" + misc.APPNAME)
 	viper.AddConfigPath("$HOME/." + misc.APPNAME)
