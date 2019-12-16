@@ -94,6 +94,37 @@
     </style>
   </head>
   <body>
+  <script type="application/javascript" id="auth_script">
+    let xhttp = new XMLHttpRequest();
+    function loginRedirect( siteId,location){
+      let provider = null;
+
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+         let providers =  JSON.parse(this.responseText)
+          provider = providers[0]
+          let destination = "/auth/"+provider+"/login?site="+siteId+"&from="+location
+          console.log("Redirecting to " + destination)
+          window.location.replace(destination);
+        }
+      };
+      xhttp.open("GET","/auth/list", true);
+      xhttp.send();
+
+      return provider
+    }
+
+    xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 ) {
+        if (this.status >= 400 || this.responseText.replace(/(\r\n|\n|\r)/gm,"") == "null" ) {
+          let siteId = "6b0d2f7683277927623f"
+          loginRedirect(siteId, location.protocol+"//"+location.host)
+        }
+      }
+    };
+    xhttp.open("GET","/auth/user", true);
+    xhttp.send();
+  </script>
     <script type="application/javascript" src="static/script/ansi_up/ansi_up.js" ></script>
     <div id="messages"></div>
 

@@ -40,6 +40,7 @@ func config() {
 	viper.SetDefault(misc.RepoDirKey, "/var/tfChek/repos_by_state/")
 	viper.SetDefault(misc.RepoNameKey, "production_42")
 	viper.SetDefault(misc.RunDirKey, "/var/run/tfChek/")
+	viper.SetDefault(misc.AvatarDir, "/var/tfChek/avatars")
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)
@@ -60,23 +61,28 @@ func config() {
 }
 
 func setupRoutes() *mux.Router {
+	authService := api.GetAuthService()
+	middleware := authService.Middleware()
+	authRoutes, avatarRoutes := authService.Handlers()
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc(misc.WSRUNSH+"{Id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
 	router.Path(misc.APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
 	router.Path(misc.APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
 	router.Path(misc.APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
 	router.Path(misc.WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
-	router.PathPrefix(misc.STATICDIR).Handler(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR))))
+	router.PathPrefix(misc.STATICDIR).Handler(middleware.Auth(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR)))))
 	router.Path(misc.HEALTHCHECK).HandlerFunc(api.HealthCheck)
+
+	router.PathPrefix(misc.AVATARS).Name("Avatars").Handler(avatarRoutes)
+	router.PathPrefix(misc.AUTH).Name("Authentication endpoint").Handler(authRoutes)
 	router.Path(misc.READINESSCHECK).HandlerFunc(api.ReadinessCheck)
-	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		//Debug websocket
-		//log.Printf("Request %s headers:", request.URL.String())
-		//for k, v := range request.Header {
-		//	log.Printf("\tHeader field %q, Value %q\n", k, v)
-		//}
-		//End debug
-		http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
+	//router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	//	http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
+	//})
+	router.Path("/").Handler(&api.IndexHandler{
+		HandlerFunc: func(writer http.ResponseWriter, request *http.Request) {
+			http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
+		},
 	})
 	return router
 

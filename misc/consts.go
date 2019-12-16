@@ -26,6 +26,7 @@ const (
 	RepoDirKey       = "repo_dir"
 	RepoNameKey      = "repo_name"
 	RunDirKey        = "run_dir"
+	AvatarDir        = "avatar_dir"
 )
 
 const (
@@ -46,6 +47,8 @@ const (
 	WEBHOOKRUNSH   = WEBHOOKPATH + runshchunk
 	HEALTHCHECK    = "/health/is_alive"
 	READINESSCHECK = "/health/is_ready"
+	AVATARS        = "/avatars"
+	AUTH           = "/auth"
 )
 
 const NOOUTPUT = "---NO OUTPUT AVAILABLE---"
