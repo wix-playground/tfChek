@@ -24,6 +24,7 @@ func LogConfig() {
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RepoDirKey, viper.GetString(RepoDirKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RepoNameKey, viper.GetString(RepoNameKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RunDirKey, viper.GetString(RunDirKey)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", AvatarDir, viper.GetString(AvatarDir)))
 	if Debug {
 		log.Printf(builder.String())
 	}

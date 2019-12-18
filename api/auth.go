@@ -13,12 +13,12 @@ import (
 func getAuthOptions() *auth.Opts {
 	options := auth.Opts{
 		SecretReader: token.SecretFunc(func() (string, error) {
-			return "secret", nil
+			return misc.JWTSecret, nil
 		}),
 		TokenDuration:  time.Minute * 5,
 		CookieDuration: time.Hour * 24,
-		Issuer:         "tfChek-test",
-		URL:            "https://899e26bb.ngrok.io/auth",
+		Issuer:         viper.GetString(misc.OAuthAppName),
+		URL:            viper.GetString(misc.OAuthEndpoint),
 		AvatarStore:    avatar.NewLocalFS(viper.GetString(misc.AvatarDir)),
 		Validator: token.ValidatorFunc(func(_ string, claims token.Claims) bool {
 			//return claims.User != nil && strings.HasPrefix(claims.User.Name, "maksymsh")
@@ -26,12 +26,13 @@ func getAuthOptions() *auth.Opts {
 		}),
 		Logger:        logger.Std,
 		SecureCookies: false,
+		DisableXSRF:   true,
 	}
 	return &options
 }
 
 func GetAuthService() *auth.Service {
 	service := auth.NewService(*getAuthOptions())
-	service.AddProvider("github", "6b0d2f7683277927623f", "f7cf93ac7b714aa9286dbf328e0b32fe1c0dafe6")
+	service.AddProvider("github", viper.GetString(misc.GitHubClientId), viper.GetString(misc.GitHubClientSecret))
 	return service
 }
