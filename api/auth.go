@@ -1,11 +1,16 @@
 package api
 
 import (
+	"errors"
+	"fmt"
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
+	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"net/http"
+	"strings"
 	"tfChek/misc"
 	"time"
 )
@@ -35,4 +40,28 @@ func GetAuthService() *auth.Service {
 	service := auth.NewService(*getAuthOptions())
 	service.AddProvider("github", viper.GetString(misc.GitHubClientId), viper.GetString(misc.GitHubClientSecret))
 	return service
+}
+
+func getClientId(provider string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "github":
+		return viper.GetString(misc.GitHubClientId), nil
+	default:
+		return "", errors.New(fmt.Sprintf("no such provider %s", provider))
+	}
+}
+
+func GetAuthInfoHandler() *AuthInfoHandler {
+	h := AuthInfoHandler{HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
+		v := mux.Vars(r)
+		provider := v["Provider"]
+		cid, err := getClientId(provider)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		} else {
+			w.Write([]byte(cid))
+			w.WriteHeader(http.StatusOK)
+		}
+	}}
+	return &h
 }

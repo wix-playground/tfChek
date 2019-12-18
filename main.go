@@ -77,7 +77,7 @@ func setupRoutes() *mux.Router {
 	router.Path(misc.WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
 	router.PathPrefix(misc.STATICDIR).Handler(middleware.Auth(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR)))))
 	router.Path(misc.HEALTHCHECK).HandlerFunc(api.HealthCheck)
-
+	router.Path(misc.AUTHINFO + "{Provider}").Name("Authentication info endpoint").Methods("GET").Handler(api.GetAuthInfoHandler())
 	router.PathPrefix(misc.AVATARS).Name("Avatars").Handler(avatarRoutes)
 	router.PathPrefix(misc.AUTH).Name("Authentication endpoint").Handler(authRoutes)
 	router.Path(misc.READINESSCHECK).HandlerFunc(api.ReadinessCheck)

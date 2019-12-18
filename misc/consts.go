@@ -55,6 +55,7 @@ const (
 	READINESSCHECK = "/health/is_ready"
 	AVATARS        = "/avatars"
 	AUTH           = "/auth"
+	AUTHINFO       = "/authinfo/"
 )
 
 const NOOUTPUT = "---NO OUTPUT AVAILABLE---"
