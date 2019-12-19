@@ -1,4 +1,4 @@
-
+const xhttp = new XMLHttpRequest();
 function addProvider(provider, setter) {
     xhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
@@ -10,9 +10,7 @@ function addProvider(provider, setter) {
     xhttp.send();
 }
 function setProviders(containerId){
-
-    let xhttp = new XMLHttpRequest();
-    const urlParams = new URLSearchParams(location.search);
+    let urlParams = new URLSearchParams(location.search);
     let from = window.location;
     if (urlParams.has("from")){
         from = urlParams.get("from");
@@ -22,15 +20,15 @@ function setProviders(containerId){
             let providers =  JSON.parse(this.responseText)
         providers.forEach(function (value) {
             let setFunc = function(siteId){
-                document.getElementById(containerId).append("<a href=\"/auth/" + value + "/login?site="+siteId+"&from="+from+"\">" +
-                    "<img src=\"/static/pictures/"+value+".png\"/>" +
-                    "</a>");
+                let pl = document.createElement("a");
+                pl.setAttribute("href", "/auth/" + value + "/login?site="+siteId+"&from="+from);
+                let pi = document.createElement("img");
+                pi.setAttribute("src","static/pictures/"+value+".png");
+                pl.appendChild(pi);
+                document.getElementById(containerId).appendChild(pl);
             };
             addProvider(value, setFunc);
         });
-            let destination ="/auth/"+provider+"/login?site="+siteId+"&from="+location
-            console.log("Redirecting to " + destination)
-            window.location.replace(destination);
         }
     };
     xhttp.open("GET","/auth/list", true);

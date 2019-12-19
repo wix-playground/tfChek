@@ -75,7 +75,7 @@ func setupRoutes() *mux.Router {
 	router.Path(misc.APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
 	router.Path(misc.APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
 	router.Path(misc.WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
-	router.PathPrefix(misc.STATICDIR).Handler(middleware.Auth(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR)))))
+
 	router.Path(misc.HEALTHCHECK).HandlerFunc(api.HealthCheck)
 	router.Path(misc.AUTHINFO + "{Provider}").Name("Authentication info endpoint").Methods("GET").Handler(api.GetAuthInfoHandler())
 	router.PathPrefix(misc.AVATARS).Name("Avatars").Handler(avatarRoutes)
@@ -84,11 +84,26 @@ func setupRoutes() *mux.Router {
 	//router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 	//	http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
 	//})
+	router.Path("/login").Methods("GET").Name("Login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "."+misc.STATICDIR+"login.html")
+	})
+	router.Path(misc.STATICDIR + "script/auth_provider.js").Methods("GET").Name("Login Script").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "."+misc.STATICDIR+"script/auth_provider.js")
+	})
+	router.Path(misc.STATICDIR + "css/main.css").Methods("GET").Name("CSS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "."+misc.STATICDIR+"css/main.css")
+	})
+	router.PathPrefix(misc.STATICDIR + "pictures").Name("Pictures").Methods("GET").Handler(http.StripPrefix(misc.STATICDIR+"pictures", http.FileServer(http.Dir("."+misc.STATICDIR+"pictures"))))
+	router.Path("/favicon.ico").Name("Icon").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "."+misc.STATICDIR+"pictures/tfChek_logo.ico")
+	})
+	router.PathPrefix(misc.STATICDIR).Handler(middleware.Auth(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR)))))
 	router.Path("/").Handler(&api.IndexHandler{
 		HandlerFunc: func(writer http.ResponseWriter, request *http.Request) {
 			http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
 		},
 	})
+
 	return router
 
 }
