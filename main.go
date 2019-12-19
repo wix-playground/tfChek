@@ -81,9 +81,6 @@ func setupRoutes() *mux.Router {
 	router.PathPrefix(misc.AVATARS).Name("Avatars").Handler(avatarRoutes)
 	router.PathPrefix(misc.AUTH).Name("Authentication endpoint").Handler(authRoutes)
 	router.Path(misc.READINESSCHECK).HandlerFunc(api.ReadinessCheck)
-	//router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-	//	http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
-	//})
 	router.Path("/login").Methods("GET").Name("Login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "."+misc.STATICDIR+"login.html")
 	})
