@@ -16,8 +16,8 @@ import (
 
 const (
 	MajorVersion = 0
-	MinorVersion = 4
-	Revision     = 9
+	MinorVersion = 5
+	Revision     = 0
 )
 
 func config() {
@@ -40,6 +40,12 @@ func config() {
 	viper.SetDefault(misc.RepoDirKey, "/var/tfChek/repos_by_state/")
 	viper.SetDefault(misc.RepoNameKey, "production_42")
 	viper.SetDefault(misc.RunDirKey, "/var/run/tfChek/")
+	viper.SetDefault(misc.AvatarDir, "/var/tfChek/avatars")
+	viper.SetDefault(misc.GitHubClientId, "client_id_here")
+	viper.SetDefault(misc.GitHubClientSecret, "client_secret_here")
+	viper.SetDefault(misc.OAuthAppName, misc.APPNAME)
+	viper.SetDefault(misc.OAuthEndpoint, "https://bo.wixpress.com/tfchek")
+	viper.SetDefault(misc.JWTSecret, "secret")
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)
@@ -60,24 +66,44 @@ func config() {
 }
 
 func setupRoutes() *mux.Router {
+	authService := api.GetAuthService()
+	middleware := authService.Middleware()
+	authRoutes, avatarRoutes := authService.Handlers()
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc(misc.WSRUNSH+"{Id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
 	router.Path(misc.APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
 	router.Path(misc.APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
 	router.Path(misc.APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
 	router.Path(misc.WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
-	router.PathPrefix(misc.STATICDIR).Handler(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR))))
+
 	router.Path(misc.HEALTHCHECK).HandlerFunc(api.HealthCheck)
+	router.Path(misc.AUTHINFO + "{Provider}").Name("Authentication info endpoint").Methods("GET").Handler(api.GetAuthInfoHandler())
+	router.PathPrefix(misc.AVATARS).Name("Avatars").Handler(avatarRoutes)
+	router.PathPrefix(misc.AUTH).Name("Authentication endpoint").Handler(authRoutes)
 	router.Path(misc.READINESSCHECK).HandlerFunc(api.ReadinessCheck)
-	router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		//Debug websocket
-		//log.Printf("Request %s headers:", request.URL.String())
-		//for k, v := range request.Header {
-		//	log.Printf("\tHeader field %q, Value %q\n", k, v)
-		//}
-		//End debug
-		http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
+	//router.PathPrefix("/").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	//	http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
+	//})
+	router.Path("/login").Methods("GET").Name("Login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "."+misc.STATICDIR+"login.html")
 	})
+	router.Path(misc.STATICDIR + "script/auth_provider.js").Methods("GET").Name("Login Script").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "."+misc.STATICDIR+"script/auth_provider.js")
+	})
+	router.Path(misc.STATICDIR + "css/main.css").Methods("GET").Name("CSS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "."+misc.STATICDIR+"css/main.css")
+	})
+	router.PathPrefix(misc.STATICDIR + "pictures").Name("Pictures").Methods("GET").Handler(http.StripPrefix(misc.STATICDIR+"pictures", http.FileServer(http.Dir("."+misc.STATICDIR+"pictures"))))
+	router.Path("/favicon.ico").Name("Icon").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "."+misc.STATICDIR+"pictures/tfChek_logo.ico")
+	})
+	router.PathPrefix(misc.STATICDIR).Handler(middleware.Auth(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR)))))
+	router.Path("/").Handler(&api.IndexHandler{
+		HandlerFunc: func(writer http.ResponseWriter, request *http.Request) {
+			http.ServeFile(writer, request, "."+misc.STATICDIR+"index.html")
+		},
+	})
+
 	return router
 
 }

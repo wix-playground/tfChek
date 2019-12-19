@@ -1,6 +1,6 @@
 tfChek
 ======
-
+![logo](static/pictures/tfChek_logo.png)
 This is a web application for Terrafrom continuous integration
 
 _*tfChek*_ performs check of the applied terraform resources.
@@ -84,3 +84,6 @@ Changelog
 
 *0.1.0*
 > Application is able to create GitHub pull requests and GitHub issues. Send notifications via GitHub. Also it can automatically merge the pull requests.
+
+*0.5.0*
+> Add Github OAuth2 functionality
