@@ -1,6 +1,6 @@
 tfChek
 ======
-
+![logo](static/tfChek_logo.png)
 This is a web application for Terrafrom continuous integration
 
 _*tfChek*_ performs check of the applied terraform resources.
