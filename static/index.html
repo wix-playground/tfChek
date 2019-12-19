@@ -1,248 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     <title>tfChek (Terraform CI)</title>
-      <style type="text/css">
-          pre {
-              margin: 0;
-              font-family: monaco, "Courier New", Courier, monospace;
-              line-height: 1.3;
-
-              color: beige;
-          }
-          body {
-              background: #131d2c;
-            margin: 0;
-          }
-      </style>
-      <style>
-          #output * {
-              /* don't allow the children of the scrollable element to be selected as an anchor node */
-              overflow-anchor: none;
-          }
-
-          #anchor {
-              /* allow the final child to be selected as an anchor node */
-              overflow-anchor: auto;
-
-              /* anchor nodes are required to have non-zero area */
-              height: 1px;
-          }
-        #messages {
-          background: #131d2c;
-          color: rgba(183, 0, 0, 0.81);
-        }
-
-      </style>
-    <style>
-
-      #bar {
-        overflow: hidden;
-        background-color: #333;
-      }
-
-      #bar a {
-        float: right;
-        display: block;
-        color: #f2f2f2;
-        text-align: center;
-        padding: 14px;
-        text-decoration: none;
-
-      }
-      #copy {
-        background-color: rgba(163, 163, 28, 0.98);
-      }
-      #cancel {
-        background-color: rgba(163, 59, 67, 0.98);
-      }
-
-      #bar div {
-        color: yellow;
-        font-size: 25px;
-        text-align: center;
-        padding: 10px;
-        float: left;
-      }
-      #copy:hover {
-        background-color: yellow;
-        color: black;
-      }
-
-      #cancel:hover {
-        background-color: red;
-        color: black;
-      }
+  <link rel="stylesheet" href="static/css/main.css" />
+</head>
+<body>
+<script type="application/javascript" src="static/script/auth_provider.js"></script>
+<script type="application/javascript">
+    checkAuthentication();
+</script>
+<script type="application/javascript" src="static/script/misc.js"></script>
+<script type="application/javascript" src="static/script/ansi_up/ansi_up.js"></script>
 
 
-      .content {
-        padding: 16px;
-      }
-
-      .sticky {
-        position: fixed;
-        top: 0;
-        width: 100%;
-      }
-
-      .sticky + .content {
-        padding-top: 60px;
-      }
-    </style>
-  </head>
-  <body>
-  <script type="application/javascript" id="auth_script">
-    const xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-      if (this.readyState == 4 ) {
-        if (this.status >= 400 || this.responseText.replace(/(\r\n|\n|\r)/gm,"") == "null" ) {
-          window.location.replace("/login?from="+window.location);
-        }
-      }
-    };
-    xhttp.open("GET","/auth/user", true);
-    xhttp.send();
-  </script>
-    <script type="application/javascript" src="static/script/ _up/ansi_up.js" ></script>
-    <div id="messages"></div>
-
-    <script type="application/javascript">
-        function start_scroll_down() {
-            scroll = setInterval(function(){ window.scrollBy(0, 1000); console.log('start');}, 1500);
-        }
-
-        function stop_scroll_down() {
-            clearInterval(scroll);
-            console.log('stop');
-        }
-    </script>
-
-    <script type="text/javascript">
-        const urlParams = new URLSearchParams(location.search)
-        console.log("Attempting Connection...");
-        const ansi_up = new AnsiUp();
-        if (urlParams.has('id')) {
-          //Connect ot a websocket
-          let proto = "ws"
-          if (location.protocol === "https:" ) {
-            proto = "wss"
-          }
-          let socket = new WebSocket(proto+"://"+location.hostname+":"+location.port+location.pathname+"ws/runsh/"+urlParams.get('id'));
-
-          let last = null;
-
-          function cancel() {
-            let id = urlParams.get('id');
-            let xmlHttp = new XMLHttpRequest();
-            xmlHttp.onreadystatechange = function() {
-              if (xmlHttp.readyState == 4 && xmlHttp.status == 202)
-                console.log("Task "+id+" has been marked for deletion");
-            }
-            if (xmlHttp.readyState == 4 && xmlHttp.status >= 400){
-              console.log("Failed to cancel task "+id);
-          }
-            xmlHttp.open("GET", "/api/v1/cancel/"+id, true); // true for asynchronous
-            xmlHttp.send(null);
-          }
-
-          function copyText() {
-            let text = "";
-            let output = document.getElementById("output");
-            let textArea = document.createElement("textarea");
-            textArea.value = output.innerText;
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-              let successful = document.execCommand("copy");
-              let message = successful ? 'successful' : 'unsuccessful';
-              console.log("Copying was " + message);
-            } catch (error) {
-              console.error("Unable to copy", error);
-            }
-            //clearSelection()
-            document.body.removeChild(textArea);
-          }
-
-          function clearSelection(){
-            if (window.getSelection()) {
-              window.getSelection().removeAllRanges();
-            }  else if (document.getSelection()) {
-              document.getSelection().empty();
-            }
-          }
-
-          function writeToScreen(message) {
-            let output = document.getElementById("output");
-            let anchor = document.getElementById("anchor")
-            let pre = document.createElement("pre");
-            pre.style.wordWrap = "break-word";
-            let msg = ansi_up.ansi_to_html(message)
-            if (message.includes('\r')) {
-
-              console.log("Rewriting: " + last.innerHTML)
-              console.log("with: " + msg)
-              last.innerHTML = msg
-
-            } else {
-              pre.innerHTML = msg;
-              last = pre
-              // console.log("New line: " + msg)
-              output.insertBefore(pre, anchor)
-              window.scrollTo(0, output.scrollHeight)
-            }
-          }
-
-          socket.onopen = () => {
-            console.log("Successfully Connected");
-            socket.send("Hi From the Client!")
-          };
-          socket.onmessage = msg => {
-            //console.log(msg.data)
-            writeToScreen(msg.data)
-          }
-          socket.onclose = event => {
-            console.log("Socket Closed Connection: ", event);
-            socket.send("Client Closed!")
-          };
-
-          socket.onerror = error => {
-            console.log("Socket Error: ", error);
-            document.getElementById("messages").innerText = "Cannot connect to to websocket"
-          };
-        } else {
-          document.getElementById("messages").innerText = "You have to query task by id number. (Add URL suffix like like '?id=1')"
-        }
-
-    </script>
-    <div id="bar">
-      <div><span>tfChek</span></div>
-      <a id="cancel" onclick="cancel()" href="javascript:void(0)">Cancel</a>
-      <a id="copy" onclick="copyText()" href="javascript:void(0)">Copy</a>
-    </div>
-    <div class="content">
+<div id="messages"></div>
+<div id="bar">
+    <div><span>tfChek</span></div>
+    <a id="cancel" onclick="cancel()" href="javascript:void(0)">Cancel</a>
+    <a id="copy" onclick="copyText()" href="javascript:void(0)">Copy</a>
+</div>
+<div class="content">
     <div id="output">
         <div id="anchor"></div>
     </div>
-    </div>
-    <script type="application/javascript">
-
-      const bar = document.getElementById("bar");
-      const sticky = bar.offsetTop;
-      function stickTheBar() {
-        if (window.pageYOffset >= sticky) {
-          bar.classList.add("sticky");
-        } else {
-          bar.classList.remove("sticky");
-        }
-      }
-      window.onscroll = function () {
-        stickTheBar();
-      }
-    </script>
-  </body>
+</div>
+<script type="application/javascript">
+  controlScroll();
+  connectToWebSocket();
+</script>
+</body>
 </html>
 

@@ -39,8 +39,9 @@ body {
     display: block;
     color: #f2f2f2;
     text-align: center;
-    padding: 14px;
+    padding: 20px;
     text-decoration: none;
+    font-size: large;
 }
 
 #bar div {
@@ -49,6 +50,8 @@ body {
     text-align: center;
     padding: 10px;
     float: left;
+    margin-top: 5px;
+    margin-left: 10px;
 }
 
 #copy {
@@ -60,6 +63,14 @@ body {
     color: black;
 }
 
+#logout {
+    background-color: rgba(9, 116, 116, 0.98);
+}
+
+#logout:hover {
+    background-color: #17ffff;
+    color: black;
+}
 #cancel {
     background-color: rgba(163, 59, 67, 0.98);
 }
@@ -81,4 +92,30 @@ body {
 
 .sticky + .content {
     padding-top: 60px;
+}
+
+#authwith {
+    margin: auto;
+    width: 30%;
+    padding: 50px;
+}
+#authwith img {
+
+    height: 200px;
+}
+
+#authwith a {
+    margin: 30px;
+    padding: 10px;
+}
+
+#authwith h2 {
+    color: #d0cc0d;
+    text-align: center;
+    font-size: 30px;
+}
+
+#providers {
+    display: grid;
+    grid-gap: 40px;
 }
