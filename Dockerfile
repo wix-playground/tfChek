@@ -6,12 +6,12 @@ LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
 WORKDIR /build
 # Copy go mod and sum files
 COPY go.mod go.sum ./
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+# Download all dependencies. Depapk add build-baseendencies will be cached if the go.mod and go.sum files are not changed
 RUN go mod download
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .
-#RUN mkdir configs
-#COPY tfChek.yml configs/
+# Install GCC
+RUN apk add build-base
 # Build the Go app
 RUN go build -o tfChek .
 
