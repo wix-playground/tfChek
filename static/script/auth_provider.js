@@ -7,7 +7,7 @@ function addProvider(provider, setter) {
             setter(siteId);
         }
     };
-    xhttp.open("GET", "/authinfo/" + provider, true);
+    xhttp.open("GET", "authinfo/" + provider, true);
     xhttp.send();
 }
 
@@ -23,7 +23,7 @@ function setProviders(containerId) {
             providers.forEach(function (value) {
                 let setFunc = function (siteId) {
                     let pl = document.createElement("a");
-                    pl.setAttribute("href", "/auth/" + value + "/login?site=" + siteId + "&from=" + from);
+                    pl.setAttribute("href", "auth/" + value + "/login?site=" + siteId + "&from=" + from);
                     let pi = document.createElement("img");
                     pi.setAttribute("src", "static/pictures/" + value + ".png");
                     pl.appendChild(pi);
@@ -33,7 +33,7 @@ function setProviders(containerId) {
             });
         }
     };
-    xhttp.open("GET", "/auth/list", true);
+    xhttp.open("GET", "auth/list", true);
     xhttp.send();
 }
 
@@ -42,7 +42,7 @@ function checkAuthentication() {
     xhttp.onreadystatechange = function () {
         if (this.readyState == 4) {
             if (this.status >= 400 || this.responseText.replace(/(\r\n|\n|\r)/gm, "") == "null") {
-                window.location.replace("/login?from=" + window.location);
+                window.location.replace("login?from=" + window.location);
             }
             if (this.status == 200) {
                 let logoutButton = document.createElement("a");
@@ -54,7 +54,7 @@ function checkAuthentication() {
             }
         }
     };
-    xhttp.open("GET", "/auth/user", true);
+    xhttp.open("GET", "auth/user", true);
     xhttp.send();
 }
 
@@ -67,7 +67,7 @@ function getUserInfo(callback) {
             callback(info)
         }
     };
-    xhttp.open("GET", "/auth/user", true);
+    xhttp.open("GET", "auth/user", true);
     xhttp.send();
 }
 
@@ -80,7 +80,7 @@ function logout() {
                 console.log("You have been logged out!")
             }
         };
-        xhttp.open("GET", "/auth/" + p + "/logout", true);
+        xhttp.open("GET", "auth/" + p + "/logout", true);
         xhttp.send();
     });
 }
