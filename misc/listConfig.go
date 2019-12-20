@@ -25,6 +25,10 @@ func LogConfig() {
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RepoNameKey, viper.GetString(RepoNameKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RunDirKey, viper.GetString(RunDirKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", AvatarDir, viper.GetString(AvatarDir)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", GitHubClientId, viper.GetString(GitHubClientId)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", OAuthAppName, viper.GetString(OAuthAppName)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", OAuthEndpoint, viper.GetString(OAuthEndpoint)))
+
 	if Debug {
 		log.Printf(builder.String())
 	}
