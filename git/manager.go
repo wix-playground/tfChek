@@ -27,6 +27,7 @@ type Manager interface {
 	Clone() error
 	Open() error
 	GetPath() string
+	GetRemote() string
 	IsCloned() bool
 }
 
@@ -35,6 +36,10 @@ type BuiltInManager struct {
 	repoPath  string
 	remote    *git.Remote
 	repo      *git.Repository
+}
+
+func (b *BuiltInManager) GetRemote() string {
+	return b.remoteUrl
 }
 
 func (b *BuiltInManager) Open() error {
@@ -67,6 +72,7 @@ func (b *BuiltInManager) GetPath() string {
 
 //In case the repo is used for generating .tf files for different terraform states
 //Or it can be empty if terraform uses only 1 state
+//State can be  a env/layer for example
 func GetManager(url, state string) (Manager, error) {
 	if repomngrs == nil {
 		lock.Lock()

@@ -31,6 +31,7 @@ type RunShTask struct {
 	inR        io.ReadCloser
 	outW, errW io.WriteCloser
 	save       bool
+	GitOrigins []string
 	GitManager git.Manager
 	sink       bytes.Buffer
 	authors    []string
@@ -38,6 +39,10 @@ type RunShTask struct {
 
 func (rst *RunShTask) SetGitManager(manager git.Manager) {
 	rst.GitManager = manager
+}
+
+func (rst *RunShTask) GetOrigins() *[]string {
+	return &rst.GitOrigins
 }
 
 func (rst *RunShTask) SetAuthors(authors []string) {
@@ -182,6 +187,7 @@ func (rst *RunShTask) prepareGit() error {
 	if rst.GitManager == nil {
 		return errors.New("Git manager has been not initialized")
 	}
+	//TODO: use multimanager
 	if rst.GitManager.IsCloned() {
 		err := rst.GitManager.Open()
 		if err != nil {

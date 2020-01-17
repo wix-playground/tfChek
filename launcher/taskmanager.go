@@ -25,7 +25,7 @@ type TaskManager interface {
 	Start() error
 	IsStarted() bool
 	//Create task
-	AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error)
+	AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, error)
 	Launch(bt Task) error
 	LaunchById(id int) error
 	RegisterCancel(id int, cancel context.CancelFunc) error
@@ -44,6 +44,7 @@ type TaskManagerImpl struct {
 	lock           sync.Mutex
 	cancel         map[int]context.CancelFunc
 	tasks          map[int]Task
+	taskHashes     map[string]int
 	saveRuns       bool
 }
 
@@ -65,7 +66,7 @@ func (tm *TaskManagerImpl) IsStarted() bool {
 	return tm.started
 }
 
-func (tm *TaskManagerImpl) AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error) {
+func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, error) {
 	command, args, err := rcs.CommandArgs()
 	if err != nil {
 		return nil, err

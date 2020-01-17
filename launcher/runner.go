@@ -15,6 +15,7 @@ type RunShCmd struct {
 }
 
 func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
+	//TODO: implement all command arguments form run.sh script
 	command := "./run.sh"
 	var args []string
 	if rsc.All {

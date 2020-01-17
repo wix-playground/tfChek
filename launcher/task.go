@@ -1,10 +1,16 @@
 package launcher
 
 import (
+	"errors"
+	"fmt"
 	"github.com/spf13/viper"
 	"io"
+	"log"
+	"strconv"
+	"strings"
 	"tfChek/git"
 	"tfChek/misc"
+	"time"
 )
 
 type StateError struct {
@@ -19,8 +25,70 @@ func (se *StateError) Error() string {
 type GitHubAwareTask interface {
 	Task
 	SetGitManager(manager git.Manager)
+	GetOrigins() *[]string
 	SetAuthors(authors []string)
 	GetAuthors() *[]string
+}
+
+type RunSHOptions struct {
+	Timeout        string
+	YN             string
+	All            string
+	UsePlan        string
+	OmitGitCheck   string
+	Filter         string
+	Region         string
+	UpgradeVersion string
+	Section        string
+	Location       string
+	Targets        string
+}
+
+type RunSHLaunchConfig struct {
+	RepoSources    []string
+	FullCommand    string
+	CommandOptions *RunSHOptions
+}
+
+func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
+	var cmd RunShCmd
+	location := rc.CommandOptions.Location
+	if location == "" {
+		return nil, errors.New("given location cannot be empty")
+	}
+	el := strings.Split(location, "/")
+	env := el[0]
+	if len(el) > 2 {
+		return nil, errors.New(fmt.Sprintf("Cannot parse environment and layer '%s'. Too many slashes", location))
+	}
+	layer := ""
+	if len(el) == 2 {
+		layer = el[1]
+	}
+	all := strings.ToLower(strings.TrimSpace(rc.CommandOptions.All)) == "y"
+	tgts := strings.Split(strings.ToLower(strings.TrimSpace(rc.CommandOptions.Targets)), " ")
+	yes := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "y"
+	no := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "n"
+	omit := strings.ToLower(strings.TrimSpace(rc.CommandOptions.OmitGitCheck)) == "1"
+	//TODO: add support of all options
+	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit, Targets: tgts, No: no, Yes: yes}
+	return &cmd, nil
+}
+
+func (rc *RunSHLaunchConfig) GetTimeout() time.Duration {
+	timeout := time.Duration(viper.GetInt(misc.TimeoutKey)) * time.Second
+	if rc.CommandOptions.Timeout == "" {
+		return timeout
+	} else {
+		t, err := strconv.Atoi(rc.CommandOptions.Timeout)
+		if err != nil {
+			if DEBUG {
+				log.Printf("Cannot parse timeout %s. Using default value from confguration file %s", rc.CommandOptions.Timeout, viper.GetInt(misc.TimeoutKey))
+			}
+			return timeout
+		}
+		return time.Duration(t) * time.Second
+	}
 }
 
 type Task interface {
