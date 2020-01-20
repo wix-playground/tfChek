@@ -19,6 +19,7 @@ const (
 	DismissOutKey      = "dismiss_out"
 	TokenKey           = "token"
 	VersionKey         = "version"
+	Fuse               = "condom"
 	QueueLengthKey     = "qlength"
 	TimeoutKey         = "timeout"
 	RepoOwnerKey       = "repo_owner"

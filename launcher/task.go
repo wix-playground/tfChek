@@ -80,6 +80,15 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 	yes := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "y"
 	no := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "n"
 	omit := strings.ToLower(strings.TrimSpace(rc.CommandOptions.OmitGitCheck)) == "1"
+	//Check fuse (condom) option
+	if viper.GetBool(misc.Fuse) {
+		if DEBUG {
+			log.Print("forcefully disabling applying ability dues to '%s' option is set to true", misc.Fuse)
+		}
+		no = true
+		yes = false
+	}
+
 	//TODO: add support of all options
 	startTime := time.Unix(rc.Instant, 0)
 	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit, Targets: tgts, No: no, Yes: yes, Started: &startTime}

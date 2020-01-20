@@ -27,6 +27,7 @@ func config() {
 	flag.Bool(misc.DismissOutKey, true, "Save tasks output to the files in outdir")
 	flag.String(misc.TokenKey, "", "GitHub API access token")
 	flag.Bool(misc.VersionKey, false, "Show the version info")
+	flag.Bool(misc.Fuse, false, "Prevent server from applying run.sh")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 	err := viper.BindPFlags(pflag.CommandLine)
