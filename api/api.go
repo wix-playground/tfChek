@@ -361,7 +361,16 @@ func postRunsh(w http.ResponseWriter, r *http.Request) {
 		handleReqErr(err, w)
 		return
 	}
-	hash := misc.GetPayloadHash(msg)
+	hash, err := misc.GetPayloadHash(msg, misc.PAYLOADHASH_SHA512)
+	if err != nil {
+		w.WriteHeader(http.StatusNotImplemented)
+		em := fmt.Sprintf("Cannot compute hash of the message. Error: %s", err.Error())
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+		return
+	}
 	smsg := string(msg)
 	dec := json.NewDecoder(strings.NewReader(smsg))
 	dec.DisallowUnknownFields()
@@ -372,14 +381,14 @@ func postRunsh(w http.ResponseWriter, r *http.Request) {
 		handleReqErr(err, w)
 		return
 	}
-	log.Println(rgp)
-	log.Println(hash)
 	if Debug {
 		log.Printf("The posted command is './run.sh %s'", rgp.FullCommand)
+		log.Printf("Parsed command struct %v", rgp)
+		log.Printf("Command computed hash %s", hash)
 	}
 	envVars := make(map[string]string)
 	envVars["TFRESDIF_NOPB"] = "true"
-	cmd, err := rgp.GetCommand()
+	cmd, err := rgp.GetHashedCommand(hash)
 	if err != nil {
 		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
 		w.WriteHeader(http.StatusBadRequest)
@@ -406,10 +415,27 @@ func postRunsh(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getTaskIdBySha512(w http.ResponseWriter, r *http.Request, hash string) {
+func GetTaskIdByHash(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	hash := v["Hash"]
 	w.Header().Set("Content-Type", "application/json")
-	launcher.GetTaskManager()
-	//var cmd launcher.RunShCmd
+	tm := launcher.GetTaskManager()
+	tid, err := tm.GetId(hash)
+	if err != nil {
+		em := fmt.Sprintf("Cannot find task id by hash %s. Error %s", hash, err.Error())
+		log.Print(em)
+		w.WriteHeader(http.StatusNotFound)
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+	} else {
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write([]byte(strconv.Itoa(tid)))
+		if err != nil {
+			log.Printf("Cannot write response. Error: %s", err)
+		}
+	}
 }
 
 func getRunsh(w http.ResponseWriter, r *http.Request, env, layer string, timeout time.Duration, envVars *map[string]string) {
@@ -428,7 +454,8 @@ func getRunsh(w http.ResponseWriter, r *http.Request, env, layer string, timeout
 	all := r.Form.Get("all")
 	no := r.Form.Get("no")
 	yes := r.Form.Get("yes")
-	cmd = launcher.RunShCmd{Layer: layer, Env: env, All: all == "true", Omit: omit == "true", Targets: targets, No: no == "true", Yes: yes == "true"}
+	startTime := time.Now()
+	cmd = launcher.RunShCmd{Layer: layer, Env: env, All: all == "true", Omit: omit == "true", Targets: targets, No: no == "true", Yes: yes == "true", Started: &startTime}
 
 	bt, err := submitCommand(&cmd, envVars, timeout)
 

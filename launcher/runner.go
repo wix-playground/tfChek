@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"errors"
+	"time"
 )
 
 type RunShCmd struct {
@@ -12,6 +13,8 @@ type RunShCmd struct {
 	Env     string
 	Layer   string
 	Targets []string
+	hash    string
+	Started *time.Time
 }
 
 func (rsc *RunShCmd) CommandArgs() (string, []string, error) {

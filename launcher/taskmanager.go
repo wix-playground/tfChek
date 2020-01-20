@@ -30,6 +30,7 @@ type TaskManager interface {
 	LaunchById(id int) error
 	RegisterCancel(id int, cancel context.CancelFunc) error
 	Get(id int) Task
+	GetId(hash string) (int, error)
 	Add(t Task) error
 	Cancel(id int) error
 }
@@ -46,10 +47,6 @@ type TaskManagerImpl struct {
 	tasks          map[int]Task
 	taskHashes     map[string]int
 	saveRuns       bool
-}
-
-func (tm *TaskManagerImpl) incrementSequence() {
-
 }
 
 func (tm *TaskManagerImpl) Cancel(id int) error {
@@ -87,6 +84,7 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 			log.Printf("Cannot add task %v. Error: %s", t, err)
 		}
 	}
+	tm.taskHashes[rcs.hash] = t.Id
 	return &t, err
 }
 
@@ -114,6 +112,13 @@ func (tm *TaskManagerImpl) LaunchById(id int) error {
 
 func (tm *TaskManagerImpl) Get(id int) Task {
 	return tm.tasks[id]
+}
+
+func (tm *TaskManagerImpl) GetId(hash string) (int, error) {
+	if h, ok := tm.taskHashes[hash]; ok {
+		return h, nil
+	}
+	return -1, errors.New(fmt.Sprintf("No task were registered with hash %s", hash))
 }
 
 func (tm *TaskManagerImpl) RegisterCancel(id int, cancel context.CancelFunc) error {
@@ -194,12 +199,13 @@ func writeSequence(i int) {
 
 func NewTaskManager() TaskManager {
 	return &TaskManagerImpl{started: false,
-		stop:     make(chan bool),
-		sequence: readSequence(),
-		threads:  make(map[string]chan Task),
-		cancel:   make(map[int]context.CancelFunc),
-		tasks:    make(map[int]Task),
-		saveRuns: !viper.GetBool(misc.DismissOutKey),
+		stop:       make(chan bool),
+		sequence:   readSequence(),
+		threads:    make(map[string]chan Task),
+		cancel:     make(map[int]context.CancelFunc),
+		tasks:      make(map[int]Task),
+		saveRuns:   !viper.GetBool(misc.DismissOutKey),
+		taskHashes: make(map[string]int),
 	}
 }
 
@@ -238,7 +244,7 @@ func (tm *TaskManagerImpl) Start() error {
 
 func (tm *TaskManagerImpl) starter() error {
 	if tm.started {
-		return errors.New("dispatcher already has been started")
+		return errors.New("dispatcher already has been Started")
 	}
 	started := make(map[string]bool)
 	for {

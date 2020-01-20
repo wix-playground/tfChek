@@ -48,6 +48,16 @@ type RunSHLaunchConfig struct {
 	RepoSources    []string
 	FullCommand    string
 	CommandOptions *RunSHOptions
+	Instant        int64
+}
+
+func (rc *RunSHLaunchConfig) GetHashedCommand(hash string) (*RunShCmd, error) {
+	cmd, err := rc.GetCommand()
+	if err != nil {
+		return nil, err
+	}
+	cmd.hash = hash
+	return cmd, nil
 }
 
 func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
@@ -71,7 +81,8 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 	no := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "n"
 	omit := strings.ToLower(strings.TrimSpace(rc.CommandOptions.OmitGitCheck)) == "1"
 	//TODO: add support of all options
-	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit, Targets: tgts, No: no, Yes: yes}
+	startTime := time.Unix(rc.Instant, 0)
+	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit, Targets: tgts, No: no, Yes: yes, Started: &startTime}
 	return &cmd, nil
 }
 
@@ -119,7 +130,7 @@ func GetStatusString(status TaskStatus) string {
 	case misc.SCHEDULED:
 		return "scheduled"
 	case misc.STARTED:
-		return "started"
+		return "Started"
 	case misc.FAILED:
 		return "failed"
 	case misc.TIMEOUT:

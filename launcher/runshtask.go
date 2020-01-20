@@ -79,7 +79,7 @@ func (rst *RunShTask) Start() error {
 		rst.Status = misc.STARTED
 		return nil
 	} else {
-		return &StateError{msg: fmt.Sprintf("Task cannot be started because it is not in scheduled state. Current state number is %d", rst.Status)}
+		return &StateError{msg: fmt.Sprintf("Task cannot be Started because it is not in scheduled state. Current state number is %d", rst.Status)}
 	}
 }
 func (rst *RunShTask) Done() error {
@@ -97,7 +97,7 @@ func (rst *RunShTask) Done() error {
 		}
 		return nil
 	} else {
-		return &StateError{msg: fmt.Sprintf("Task cannot be done, because it has been not started. Current state number is %d", rst.Status)}
+		return &StateError{msg: fmt.Sprintf("Task cannot be done, because it has been not Started. Current state number is %d", rst.Status)}
 	}
 }
 
@@ -116,7 +116,7 @@ func (rst *RunShTask) Fail() error {
 		}
 		return nil
 	} else {
-		return &StateError{msg: fmt.Sprintf("Task cannot be failed, because it has been not started. Current state number is %d", rst.Status)}
+		return &StateError{msg: fmt.Sprintf("Task cannot be failed, because it has been not Started. Current state number is %d", rst.Status)}
 	}
 }
 
@@ -135,7 +135,7 @@ func (rst *RunShTask) TimeoutFail() error {
 		}
 		return nil
 	} else {
-		return &StateError{msg: fmt.Sprintf("Task cannot be timed out, because it has been not started. Current state number is %d", rst.Status)}
+		return &StateError{msg: fmt.Sprintf("Task cannot be timed out, because it has been not Started. Current state number is %d", rst.Status)}
 	}
 }
 
