@@ -112,7 +112,7 @@ func initialize() {
 	//Prepare configuration
 	config()
 	//Start GitHub API manager
-
+	//TODO: Use lazy repository initialization
 	repoName := viper.GetString(misc.RepoNameKey)
 	repoOwner := viper.GetString(misc.RepoOwnerKey)
 	token := viper.GetString(misc.TokenKey)
@@ -120,6 +120,7 @@ func initialize() {
 		misc.Debug = true
 		misc.LogConfig()
 	}
+	//TODO: Use this for each state while the dir is empty
 	github.InitManager(repoName, repoOwner, token)
 	github.GetManager().Start()
 	//Start task manager
