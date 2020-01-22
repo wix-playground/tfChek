@@ -39,7 +39,6 @@ type RunSHOptions struct {
 	Filter         string
 	Region         string
 	UpgradeVersion string
-	Section        string
 	Location       string
 	Targets        string
 }
@@ -80,6 +79,11 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 	yes := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "y"
 	no := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "n"
 	omit := strings.ToLower(strings.TrimSpace(rc.CommandOptions.OmitGitCheck)) == "1"
+	usePlan := strings.ToLower(strings.TrimSpace(rc.CommandOptions.UsePlan)) == "n"
+	filter := strings.TrimSpace(rc.CommandOptions.Filter)
+	region := strings.TrimSpace(rc.CommandOptions.Region)
+	terraform := strings.TrimSpace(rc.CommandOptions.UpgradeVersion)
+
 	//Check fuse (condom) option
 	if viper.GetBool(misc.Fuse) {
 		if DEBUG {
@@ -89,9 +93,10 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 		yes = false
 	}
 
-	//TODO: add support of all options
 	startTime := time.Unix(rc.Instant, 0)
-	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit, Targets: tgts, No: no, Yes: yes, Started: &startTime}
+	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit,
+		UsePlan: usePlan, Filter: filter, Region: region, TerraformVersion: terraform,
+		Targets: tgts, No: no, Yes: yes, Started: &startTime}
 	return &cmd, nil
 }
 

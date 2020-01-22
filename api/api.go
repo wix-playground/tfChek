@@ -291,7 +291,9 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 					if gaTask, ok := task.(launcher.GitHubAwareTask); ok {
 						//TODO: handle different git repositories
 
-						gitMan, err := git.GetManager(pushPayload.Repository.GitURL, task.SyncName())
+						//gitMan, err := git.GetManager(pushPayload.Repository.GitURL, task.SyncName())
+						gitMan, err := git.GetManager(pushPayload.Repository.SSHURL, task.SyncName())
+
 						if err != nil {
 							log.Printf("Cannot get Git manager")
 						}
@@ -379,6 +381,9 @@ func postRunsh(w http.ResponseWriter, r *http.Request) {
 	err = dec.Decode(&rgp)
 	if err != nil {
 		handleReqErr(err, w)
+		if Debug {
+			log.Printf("Could not parse json. Original message was: %s", smsg)
+		}
 		return
 	}
 	if Debug {

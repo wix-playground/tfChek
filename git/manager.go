@@ -269,7 +269,7 @@ func (b *BuiltInManager) Clone() error {
 	b.repo, err = git.PlainClone(b.repoPath, false, &git.CloneOptions{URL: b.remoteUrl, Progress: prog, SingleBranch: true})
 	if err != nil {
 		b.repo = nil
-		log.Printf("Cannot clone repository. Error: %s", err)
+		log.Printf("Cannot clone repository from %s to %s. Error: %s", b.remoteUrl, b.repoPath, err)
 		return err
 	}
 	err = b.initRemotes()

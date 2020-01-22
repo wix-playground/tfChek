@@ -6,19 +6,22 @@ import (
 )
 
 type RunShCmd struct {
-	All     bool
-	Omit    bool
-	No      bool
-	Yes     bool
-	Env     string
-	Layer   string
-	Targets []string
-	hash    string
-	Started *time.Time
+	All              bool
+	Omit             bool
+	No               bool
+	Yes              bool
+	Env              string
+	Layer            string
+	Targets          []string
+	UsePlan          bool
+	Filter           string
+	Region           string
+	TerraformVersion string
+	hash             string
+	Started          *time.Time
 }
 
 func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
-	//TODO: implement all command arguments form run.sh script
 	command := "./run.sh"
 	var args []string
 	if rsc.All {
@@ -32,6 +35,15 @@ func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
 	}
 	if rsc.Yes && !rsc.No {
 		args = append(args, "-y")
+	}
+	if rsc.UsePlan {
+		args = append(args, "-p")
+	}
+	if rsc.Region != "" {
+		args = append(args, "-r", rsc.Region)
+	}
+	if rsc.TerraformVersion != "" {
+		args = append(args, "-t", rsc.TerraformVersion)
 	}
 	if rsc.Env != "" {
 		if rsc.Layer != "" {
