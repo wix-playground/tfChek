@@ -108,6 +108,7 @@ func setupRoutes() *mux.Router {
 
 }
 
+//Deprecated
 func initialize() {
 	//Prepare configuration
 	config()

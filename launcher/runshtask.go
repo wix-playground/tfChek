@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"tfChek/git"
 	"tfChek/github"
 	"tfChek/misc"
@@ -22,6 +23,7 @@ type RunShTask struct {
 	Id         int
 	Command    string
 	Args       []string
+	ExtraEnv   map[string]string
 	StateLock  string
 	Context    context.Context
 	Status     TaskStatus
@@ -53,6 +55,10 @@ func (rst *RunShTask) GetAuthors() *[]string {
 	return &rst.authors
 }
 
+func (rst *RunShTask) GetExtraEnv() *map[string]string {
+	return &rst.ExtraEnv
+}
+
 func (rst *RunShTask) Register() error {
 	if rst.Status == misc.OPEN {
 		rst.Status = misc.REGISTERED
@@ -73,7 +79,7 @@ func (rst *RunShTask) Schedule() error {
 
 func (rst *RunShTask) Start() error {
 	if rst.Status < misc.STARTED {
-		if DEBUG {
+		if Debug {
 			log.Printf("Start of task %s", rst.Name)
 		}
 		rst.Status = misc.STARTED
@@ -85,6 +91,7 @@ func (rst *RunShTask) Start() error {
 func (rst *RunShTask) Done() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.DONE
+		//TODO: Obtain a particulat git manager here
 		manager := github.GetManager()
 		if manager != nil {
 			c := manager.GetChannel()
@@ -185,9 +192,21 @@ func (rst *RunShTask) GetStdIn() io.Writer {
 
 func (rst *RunShTask) prepareGit() error {
 	if rst.GitManager == nil {
-		return errors.New("Git manager has been not initialized")
+		//return errors.New("Git manager has been not initialized")
+
+		//Prehaps here I have to convert git url to ssh url
+		var gurl string
+		if len(rst.GitOrigins) > 0 {
+			gurl = rst.GitOrigins[0]
+		} else {
+			return errors.New("This task contains no Git remotes. How can I checkout the repository?")
+		}
+		gitman, err := git.GetManager(gurl, rst.StateLock)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Cannot obtain Git Manager for the task id: %d. Error: %s", rst.Id, err.Error()))
+		}
+		rst.GitManager = gitman
 	}
-	//TODO: use multimanager
 	if rst.GitManager.IsCloned() {
 		err := rst.GitManager.Open()
 		if err != nil {
@@ -257,7 +276,7 @@ func (rst *RunShTask) Run() error {
 	command := exec.CommandContext(rst.Context, rst.Command, rst.Args...)
 	command.Dir = cwd
 	command.Env = sysenv
-	log.Printf("Running command and waiting for it to finish...")
+	log.Printf("Running command '%s %s' and waiting for it to finish...", rst.Command, strings.Join(rst.Args, " "))
 	command.Stdout = mw
 	command.Stderr = mw
 	//command.Stdin = rst.inR

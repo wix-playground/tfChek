@@ -18,6 +18,7 @@ type RunShCmd struct {
 	Region           string
 	TerraformVersion string
 	hash             string
+	GitOrigins       []string
 	Started          *time.Time
 }
 
@@ -55,4 +56,8 @@ func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
 		return "", nil, errors.New("cannot launch run.sh if environment is not specified")
 	}
 	return command, args, nil
+}
+
+func (rsc *RunShCmd) getGtiOrigins() *[]string {
+	return &rsc.GitOrigins
 }

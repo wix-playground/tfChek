@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"tfChek/git"
 	"tfChek/launcher"
 	"tfChek/misc"
 	"time"
@@ -167,7 +166,7 @@ func RunShEnv(w http.ResponseWriter, r *http.Request) {
 func Cancel(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
 	vars := mux.Vars(r)
-	id := vars["id"]
+	id := vars["Id"]
 	if id == "" {
 		log.Println("Cannot cancel with no id")
 		w.WriteHeader(404)
@@ -292,12 +291,13 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 						//TODO: handle different git repositories
 
 						//gitMan, err := git.GetManager(pushPayload.Repository.GitURL, task.SyncName())
-						gitMan, err := git.GetManager(pushPayload.Repository.SSHURL, task.SyncName())
 
-						if err != nil {
-							log.Printf("Cannot get Git manager")
-						}
-						gaTask.SetGitManager(gitMan)
+						//Looks like I have to prepare git manager much earlier
+						//gitMan, err := git.GetManager(pushPayload.Repository.SSHURL, task.SyncName())
+						//if err != nil {
+						//	log.Printf("Cannot get Git manager")
+						//}
+						//gaTask.SetGitManager(gitMan)
 						authors := fetch_authors(&pushPayload)
 						gaTask.SetAuthors(*authors)
 					}

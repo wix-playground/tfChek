@@ -54,7 +54,7 @@ func (tm *TaskManagerImpl) Cancel(id int) error {
 	if cancel == nil {
 		return errors.New(fmt.Sprintf("task id: $d has no registered cancel function"))
 	}
-	log.Printf("Task id %d is set to be cancelled")
+	log.Printf("Task id %d is set to be cancelled", id)
 	cancel()
 	return nil
 }
@@ -71,16 +71,22 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 	outPipeReader, outPipeWriter := io.Pipe()
 	errPipeReader, errPipeWriter := io.Pipe()
 	inPipeReader, inPipeWriter := io.Pipe()
+
 	t := RunShTask{Command: command, Args: args, Context: ctx,
 		Status: misc.OPEN, save: tm.saveRuns,
 		Socket:    make(chan *websocket.Conn),
 		StateLock: fmt.Sprintf("%s/%s", rcs.Env, rcs.Layer),
 		out:       outPipeReader, err: errPipeReader, in: inPipeWriter,
 		outW: outPipeWriter, errW: errPipeWriter, inR: inPipeReader,
+		//Perhaps it is better ot transfer Git Origins via the context
+		GitOrigins: rcs.GitOrigins,
+	}
+	if ee, ok := ctx.Value(misc.EnvVarsKey).(*map[string]string); ok {
+		t.ExtraEnv = *ee
 	}
 	err = tm.Add(&t)
 	if err != nil {
-		if DEBUG {
+		if Debug {
 			log.Printf("Cannot add task %v. Error: %s", t, err)
 		}
 	}
@@ -90,7 +96,7 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 
 func (tm *TaskManagerImpl) Add(t Task) error {
 	if t == nil {
-		if DEBUG {
+		if Debug {
 			log.Println("Cannot add nil task")
 		}
 		return errors.New("cannot add nil task")
@@ -190,7 +196,7 @@ func writeSequence(i int) {
 	defer seqFile.Close()
 	_, err = seqFile.Write([]byte(strconv.Itoa(i)))
 	if err != nil {
-		if DEBUG {
+		if Debug {
 			log.Printf("Cannot save sequence %d to file %s Error: %s", i, rdf, err)
 		}
 	}
@@ -221,6 +227,9 @@ func (tm *TaskManagerImpl) Launch(bt Task) error {
 		tm.lock.Unlock()
 	}
 	bt.SetStatus(misc.SCHEDULED)
+	if Debug {
+		log.Printf("Task %d has been scheduled", bt.GetId())
+	}
 	tm.threads[bt.SyncName()] <- bt
 
 	return nil

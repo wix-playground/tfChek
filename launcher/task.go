@@ -86,17 +86,17 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 
 	//Check fuse (condom) option
 	if viper.GetBool(misc.Fuse) {
-		if DEBUG {
-			log.Print("forcefully disabling applying ability dues to '%s' option is set to true", misc.Fuse)
+		if Debug {
+			log.Printf("forcefully disabling applying ability due to '%s' option is set to true", misc.Fuse)
 		}
 		no = true
 		yes = false
 	}
-
+	gorigins := normalizeGitRemotes(&rc.RepoSources)
 	startTime := time.Unix(rc.Instant, 0)
 	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit,
 		UsePlan: usePlan, Filter: filter, Region: region, TerraformVersion: terraform,
-		Targets: tgts, No: no, Yes: yes, Started: &startTime}
+		Targets: tgts, No: no, Yes: yes, GitOrigins: *gorigins, Started: &startTime}
 	return &cmd, nil
 }
 
@@ -107,8 +107,8 @@ func (rc *RunSHLaunchConfig) GetTimeout() time.Duration {
 	} else {
 		t, err := strconv.Atoi(rc.CommandOptions.Timeout)
 		if err != nil {
-			if DEBUG {
-				log.Printf("Cannot parse timeout %s. Using default value from confguration file %s", rc.CommandOptions.Timeout, viper.GetInt(misc.TimeoutKey))
+			if Debug {
+				log.Printf("Cannot parse timeout %s. Using default value from confguration file %d", rc.CommandOptions.Timeout, viper.GetInt(misc.TimeoutKey))
 			}
 			return timeout
 		}
@@ -156,4 +156,4 @@ func GetStatusString(status TaskStatus) string {
 	}
 }
 
-var DEBUG bool = viper.GetBool(misc.DebugKey)
+var Debug bool = viper.GetBool(misc.DebugKey)
