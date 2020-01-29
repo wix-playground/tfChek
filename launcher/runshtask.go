@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/acarl005/stripansi"
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"os"
@@ -104,8 +105,14 @@ func (rst *RunShTask) Start() error {
 func (rst *RunShTask) Done() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.DONE
-		//TODO: Obtain a particulat git manager here
-		manager := github.GetManager()
+		fgm, err := rst.getFirstGitManager()
+		if err != nil {
+			if Debug {
+				log.Printf("Cannot get first Git manager. Error: %s", err)
+			}
+			return err
+		}
+		manager := github.GetManager(fgm.GetRemote())
 		if manager != nil {
 			c := manager.GetChannel()
 			o := rst.GetOut()
@@ -124,7 +131,14 @@ func (rst *RunShTask) Done() error {
 func (rst *RunShTask) Fail() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.FAILED
-		manager := github.GetManager()
+		fgm, err := rst.getFirstGitManager()
+		if err != nil {
+			if Debug {
+				log.Printf("Cannot get first Git manager. Error: %s", err)
+			}
+			return err
+		}
+		manager := github.GetManager(fgm.GetRemote())
 		if manager != nil {
 			c := manager.GetChannel()
 			o := rst.GetOut()
@@ -143,7 +157,14 @@ func (rst *RunShTask) Fail() error {
 func (rst *RunShTask) TimeoutFail() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.TIMEOUT
-		manager := github.GetManager()
+		fgm, err := rst.getFirstGitManager()
+		if err != nil {
+			if Debug {
+				log.Printf("Cannot get first Git manager. Error: %s", err)
+			}
+			return err
+		}
+		manager := github.GetManager(fgm.GetRemote())
 		if manager != nil {
 			c := manager.GetChannel()
 			o := rst.GetOut()
@@ -257,7 +278,6 @@ func (rst *RunShTask) prepareGit() error {
 		}
 		return err
 	}
-
 	return nil
 }
 
@@ -293,6 +313,29 @@ func (rst *RunShTask) generateRunshPath() (string, error) {
 	return strings.Join(paths, ":"), nil
 }
 
+func (rst *RunShTask) prepareGitHub() error {
+	gitManagers, err := rst.getGitManagers()
+	if err != nil {
+		//Add Debug output here
+		if Debug {
+			log.Printf("Cannot prepare GitHub, because Git manager are not available. Error: %s", err)
+		}
+		return err
+	}
+	repoOwner := viper.GetString(misc.RepoOwnerKey)
+	token := viper.GetString(misc.TokenKey)
+	for _, gm := range *gitManagers {
+		gitHubManager := github.GetManager(gm.GetRemote())
+		if gitHubManager == nil {
+			//Initialize GitHub manager
+			github.InitManager(gm.GetRemote(), repoOwner, token)
+			gitHubManager = github.GetManager(gm.GetRemote())
+		}
+		gitHubManager.Start()
+	}
+	return nil
+}
+
 func (rst *RunShTask) Run() error {
 	if rst.Status != misc.SCHEDULED {
 		return errors.New("cannot run unscheduled task")
@@ -300,7 +343,13 @@ func (rst *RunShTask) Run() error {
 	//Perform git routines
 	err := rst.prepareGit()
 	if err != nil {
-		log.Printf("Cannot prepare git repository. Error: %s", err)
+		log.Printf("Cannot prepare git repositories. Error: %s", err)
+		rst.ForceFail()
+		return err
+	}
+	err = rst.prepareGitHub()
+	if err != nil {
+		log.Printf("Cannot prepare GitHub repositories. Error: %s", err)
 		rst.ForceFail()
 		return err
 	}
@@ -316,6 +365,12 @@ func (rst *RunShTask) Run() error {
 		return err
 	}
 	cwd := gitman.GetPath()
+	//Copy certificates to the landscape directory of the git repository which contains run.sh. Usually it is the very first one
+	err = deliverCerts(cwd)
+
+	if err != nil {
+		log.Printf("Warning! Task id %d can fail, because certificates delivery failed. Error: %s", rst.Id, err)
+	}
 	log.Printf("Task id: %d working directory: %s", rst.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
