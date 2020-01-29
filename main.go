@@ -27,6 +27,7 @@ func config() {
 	flag.Bool(misc.DismissOutKey, true, "Save tasks output to the files in outdir")
 	flag.String(misc.TokenKey, "", "GitHub API access token")
 	flag.Bool(misc.VersionKey, false, "Show the version info")
+	flag.Bool(misc.Fuse, false, "Prevent server from applying run.sh")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 	err := viper.BindPFlags(pflag.CommandLine)
@@ -71,8 +72,10 @@ func setupRoutes() *mux.Router {
 	authRoutes, avatarRoutes := authService.Handlers()
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc(misc.WSRUNSH+"{Id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
+	router.Path(misc.APIRUNSHIDQ + "{Hash}").Methods("GET").Name("Query by hash").HandlerFunc(api.GetTaskIdByHash)
 	router.Path(misc.APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
 	router.Path(misc.APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
+	router.Path(misc.APIRUNSH).Methods("POST").Name("run.sh universal task accepting endpoint").HandlerFunc(api.RunShPost)
 	router.Path(misc.APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
 	router.Path(misc.WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
 
@@ -105,11 +108,12 @@ func setupRoutes() *mux.Router {
 
 }
 
+//Deprecated
 func initialize() {
 	//Prepare configuration
 	config()
 	//Start GitHub API manager
-
+	//TODO: Use lazy repository initialization
 	repoName := viper.GetString(misc.RepoNameKey)
 	repoOwner := viper.GetString(misc.RepoOwnerKey)
 	token := viper.GetString(misc.TokenKey)
@@ -117,6 +121,7 @@ func initialize() {
 		misc.Debug = true
 		misc.LogConfig()
 	}
+	//TODO: Use this for each state while the dir is empty
 	github.InitManager(repoName, repoOwner, token)
 	github.GetManager().Start()
 	//Start task manager

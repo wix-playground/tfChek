@@ -1,10 +1,15 @@
 package launcher
 
 import (
+	"errors"
+	"fmt"
 	"github.com/spf13/viper"
 	"io"
-	"tfChek/git"
+	"log"
+	"strconv"
+	"strings"
 	"tfChek/misc"
+	"time"
 )
 
 type StateError struct {
@@ -18,9 +23,95 @@ func (se *StateError) Error() string {
 
 type GitHubAwareTask interface {
 	Task
-	SetGitManager(manager git.Manager)
+	GetOrigins() *[]string
 	SetAuthors(authors []string)
 	GetAuthors() *[]string
+}
+
+type RunSHOptions struct {
+	Timeout        string
+	YN             string
+	All            string
+	UsePlan        string
+	OmitGitCheck   string
+	Filter         string
+	Region         string
+	UpgradeVersion string
+	Location       string
+	Targets        string
+}
+
+type RunSHLaunchConfig struct {
+	RepoSources    []string
+	FullCommand    string
+	CommandOptions *RunSHOptions
+	Instant        int64
+}
+
+func (rc *RunSHLaunchConfig) GetHashedCommand(hash string) (*RunShCmd, error) {
+	cmd, err := rc.GetCommand()
+	if err != nil {
+		return nil, err
+	}
+	cmd.hash = hash
+	return cmd, nil
+}
+
+func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
+	var cmd RunShCmd
+	location := rc.CommandOptions.Location
+	if location == "" {
+		return nil, errors.New("given location cannot be empty")
+	}
+	el := strings.Split(location, "/")
+	env := el[0]
+	if len(el) > 2 {
+		return nil, errors.New(fmt.Sprintf("Cannot parse environment and layer '%s'. Too many slashes", location))
+	}
+	layer := ""
+	if len(el) == 2 {
+		layer = el[1]
+	}
+	all := strings.ToLower(strings.TrimSpace(rc.CommandOptions.All)) == "y"
+	tgts := strings.Split(strings.ToLower(strings.TrimSpace(rc.CommandOptions.Targets)), " ")
+	yes := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "y"
+	no := strings.ToLower(strings.TrimSpace(rc.CommandOptions.YN)) == "n"
+	omit := strings.ToLower(strings.TrimSpace(rc.CommandOptions.OmitGitCheck)) == "1"
+	usePlan := strings.ToLower(strings.TrimSpace(rc.CommandOptions.UsePlan)) == "n"
+	filter := strings.TrimSpace(rc.CommandOptions.Filter)
+	region := strings.TrimSpace(rc.CommandOptions.Region)
+	terraform := strings.TrimSpace(rc.CommandOptions.UpgradeVersion)
+
+	//Check fuse (condom) option
+	if viper.GetBool(misc.Fuse) {
+		if Debug {
+			log.Printf("forcefully disabling applying ability due to '%s' option is set to true", misc.Fuse)
+		}
+		no = true
+		yes = false
+	}
+	gorigins := normalizeGitRemotes(&rc.RepoSources)
+	startTime := time.Unix(rc.Instant, 0)
+	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit,
+		UsePlan: usePlan, Filter: filter, Region: region, TerraformVersion: terraform,
+		Targets: tgts, No: no, Yes: yes, GitOrigins: *gorigins, Started: &startTime}
+	return &cmd, nil
+}
+
+func (rc *RunSHLaunchConfig) GetTimeout() time.Duration {
+	timeout := time.Duration(viper.GetInt(misc.TimeoutKey)) * time.Second
+	if rc.CommandOptions.Timeout == "" {
+		return timeout
+	} else {
+		t, err := strconv.Atoi(rc.CommandOptions.Timeout)
+		if err != nil {
+			if Debug {
+				log.Printf("Cannot parse timeout %s. Using default value from confguration file %d", rc.CommandOptions.Timeout, viper.GetInt(misc.TimeoutKey))
+			}
+			return timeout
+		}
+		return time.Duration(t) * time.Second
+	}
 }
 
 type Task interface {
@@ -51,7 +142,7 @@ func GetStatusString(status TaskStatus) string {
 	case misc.SCHEDULED:
 		return "scheduled"
 	case misc.STARTED:
-		return "started"
+		return "Started"
 	case misc.FAILED:
 		return "failed"
 	case misc.TIMEOUT:
@@ -63,4 +154,4 @@ func GetStatusString(status TaskStatus) string {
 	}
 }
 
-var DEBUG bool = viper.GetBool(misc.DebugKey)
+var Debug bool = viper.GetBool(misc.DebugKey)

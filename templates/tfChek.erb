@@ -1,4 +1,5 @@
 #!/bin/bash
+#TODO: Remove this file. Make application to use configuration file only
 TFCHEK_DEBUG=<%= databag_config('com.wixpress.system.tfchek','debug') %>
 TFRESDIF_NOPB=true
 TFCHEK_TIMEOUT=<%= databag_config('com.wixpress.system.tfchek','timeout') %>
@@ -9,5 +10,5 @@ TFCHEK_REPO_DIR=<%= databag_config('com.wixpress.system.tfchek','run_dir') %>
 TFCHEK_REPO_NAME=<%= databag_config('com.wixpress.system.tfchek','repo_name') %>
 TFCHEK_WEBHOOK_SECRET=<%= databag_passwd('com.wixpress.system.tfchek','webhook_secret') %>
 TFCHEK_RUN_DIR=<%= databag_config('com.wixpress.system.tfchek','run_dir') %>
-
-export TFCHEK_DEBUG TFRESDIF_NOPB TFCHEK_TIMEOUT TFCHEK_REPOPATH TFCHEK_TOKEN TFCHEK_REPOOWNER TFCHEK_REPO_DIR TFCHEK_REPO_NAME TFCHEK_WEBHOOK_SECRET TFCHEK_RUN_DIR
+TFCHEK_CONDOM=<%= databag_config('com.wixpress.system.tfchek','condom') %>
+export TFCHEK_DEBUG TFRESDIF_NOPB TFCHEK_TIMEOUT TFCHEK_REPOPATH TFCHEK_TOKEN TFCHEK_REPOOWNER TFCHEK_REPO_DIR TFCHEK_REPO_NAME TFCHEK_WEBHOOK_SECRET TFCHEK_RUN_DIR TFCHEK_CONDOM

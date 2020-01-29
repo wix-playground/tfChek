@@ -2,16 +2,24 @@ package launcher
 
 import (
 	"errors"
+	"time"
 )
 
 type RunShCmd struct {
-	All     bool
-	Omit    bool
-	No      bool
-	Yes     bool
-	Env     string
-	Layer   string
-	Targets []string
+	All              bool
+	Omit             bool
+	No               bool
+	Yes              bool
+	Env              string
+	Layer            string
+	Targets          []string
+	UsePlan          bool
+	Filter           string
+	Region           string
+	TerraformVersion string
+	hash             string
+	GitOrigins       []string
+	Started          *time.Time
 }
 
 func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
@@ -29,6 +37,15 @@ func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
 	if rsc.Yes && !rsc.No {
 		args = append(args, "-y")
 	}
+	if rsc.UsePlan {
+		args = append(args, "-p")
+	}
+	if rsc.Region != "" {
+		args = append(args, "-r", rsc.Region)
+	}
+	if rsc.TerraformVersion != "" {
+		args = append(args, "-t", rsc.TerraformVersion)
+	}
 	if rsc.Env != "" {
 		if rsc.Layer != "" {
 			args = append(args, rsc.Env+"/"+rsc.Layer)
@@ -39,4 +56,8 @@ func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
 		return "", nil, errors.New("cannot launch run.sh if environment is not specified")
 	}
 	return command, args, nil
+}
+
+func (rsc *RunShCmd) getGtiOrigins() *[]string {
+	return &rsc.GitOrigins
 }

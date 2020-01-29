@@ -25,11 +25,12 @@ type TaskManager interface {
 	Start() error
 	IsStarted() bool
 	//Create task
-	AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error)
+	AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, error)
 	Launch(bt Task) error
 	LaunchById(id int) error
 	RegisterCancel(id int, cancel context.CancelFunc) error
 	Get(id int) Task
+	GetId(hash string) (int, error)
 	Add(t Task) error
 	Cancel(id int) error
 }
@@ -44,19 +45,16 @@ type TaskManagerImpl struct {
 	lock           sync.Mutex
 	cancel         map[int]context.CancelFunc
 	tasks          map[int]Task
+	taskHashes     map[string]int
 	saveRuns       bool
-}
-
-func (tm *TaskManagerImpl) incrementSequence() {
-
 }
 
 func (tm *TaskManagerImpl) Cancel(id int) error {
 	cancel := tm.cancel[id]
 	if cancel == nil {
-		return errors.New(fmt.Sprintf("task id: $d has no registered cancel function"))
+		return errors.New(fmt.Sprintf("task id: %d has no registered cancel function", id))
 	}
-	log.Printf("Task id %d is set to be cancelled")
+	log.Printf("Task id %d is set to be cancelled", id)
 	cancel()
 	return nil
 }
@@ -65,7 +63,7 @@ func (tm *TaskManagerImpl) IsStarted() bool {
 	return tm.started
 }
 
-func (tm *TaskManagerImpl) AddRunSh(rcs RunShCmd, ctx context.Context) (Task, error) {
+func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, error) {
 	command, args, err := rcs.CommandArgs()
 	if err != nil {
 		return nil, err
@@ -73,25 +71,33 @@ func (tm *TaskManagerImpl) AddRunSh(rcs RunShCmd, ctx context.Context) (Task, er
 	outPipeReader, outPipeWriter := io.Pipe()
 	errPipeReader, errPipeWriter := io.Pipe()
 	inPipeReader, inPipeWriter := io.Pipe()
+
 	t := RunShTask{Command: command, Args: args, Context: ctx,
 		Status: misc.OPEN, save: tm.saveRuns,
 		Socket:    make(chan *websocket.Conn),
 		StateLock: fmt.Sprintf("%s/%s", rcs.Env, rcs.Layer),
 		out:       outPipeReader, err: errPipeReader, in: inPipeWriter,
 		outW: outPipeWriter, errW: errPipeWriter, inR: inPipeReader,
+		//Perhaps it is better ot transfer Git Origins via the context
+		GitOrigins: rcs.GitOrigins,
 	}
+	if ee, ok := ctx.Value(misc.EnvVarsKey).(*map[string]string); ok {
+		t.ExtraEnv = *ee
+	}
+
 	err = tm.Add(&t)
 	if err != nil {
-		if DEBUG {
+		if Debug {
 			log.Printf("Cannot add task %v. Error: %s", t, err)
 		}
 	}
+	tm.taskHashes[rcs.hash] = t.Id
 	return &t, err
 }
 
 func (tm *TaskManagerImpl) Add(t Task) error {
 	if t == nil {
-		if DEBUG {
+		if Debug {
 			log.Println("Cannot add nil task")
 		}
 		return errors.New("cannot add nil task")
@@ -113,6 +119,13 @@ func (tm *TaskManagerImpl) LaunchById(id int) error {
 
 func (tm *TaskManagerImpl) Get(id int) Task {
 	return tm.tasks[id]
+}
+
+func (tm *TaskManagerImpl) GetId(hash string) (int, error) {
+	if h, ok := tm.taskHashes[hash]; ok {
+		return h, nil
+	}
+	return -1, errors.New(fmt.Sprintf("No task were registered with hash %s", hash))
 }
 
 func (tm *TaskManagerImpl) RegisterCancel(id int, cancel context.CancelFunc) error {
@@ -184,7 +197,7 @@ func writeSequence(i int) {
 	defer seqFile.Close()
 	_, err = seqFile.Write([]byte(strconv.Itoa(i)))
 	if err != nil {
-		if DEBUG {
+		if Debug {
 			log.Printf("Cannot save sequence %d to file %s Error: %s", i, rdf, err)
 		}
 	}
@@ -193,12 +206,13 @@ func writeSequence(i int) {
 
 func NewTaskManager() TaskManager {
 	return &TaskManagerImpl{started: false,
-		stop:     make(chan bool),
-		sequence: readSequence(),
-		threads:  make(map[string]chan Task),
-		cancel:   make(map[int]context.CancelFunc),
-		tasks:    make(map[int]Task),
-		saveRuns: !viper.GetBool(misc.DismissOutKey),
+		stop:       make(chan bool),
+		sequence:   readSequence(),
+		threads:    make(map[string]chan Task),
+		cancel:     make(map[int]context.CancelFunc),
+		tasks:      make(map[int]Task),
+		saveRuns:   !viper.GetBool(misc.DismissOutKey),
+		taskHashes: make(map[string]int),
 	}
 }
 
@@ -214,6 +228,9 @@ func (tm *TaskManagerImpl) Launch(bt Task) error {
 		tm.lock.Unlock()
 	}
 	bt.SetStatus(misc.SCHEDULED)
+	if Debug {
+		log.Printf("Task %d has been scheduled", bt.GetId())
+	}
 	tm.threads[bt.SyncName()] <- bt
 
 	return nil
@@ -237,7 +254,7 @@ func (tm *TaskManagerImpl) Start() error {
 
 func (tm *TaskManagerImpl) starter() error {
 	if tm.started {
-		return errors.New("dispatcher already has been started")
+		return errors.New("dispatcher already has been Started")
 	}
 	started := make(map[string]bool)
 	for {

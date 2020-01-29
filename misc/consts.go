@@ -11,19 +11,22 @@ const (
 )
 
 const (
-	WdKey              = "WORKING_DIRECTORY"
-	EnvVarsKey         = "ENVIRONMENT_VARIABLES"
-	OutDirKey          = "out_dir"
-	DebugKey           = "debug"
-	PortKey            = "port"
-	DismissOutKey      = "dismiss_out"
-	TokenKey           = "token"
-	VersionKey         = "version"
-	QueueLengthKey     = "qlength"
-	TimeoutKey         = "timeout"
-	RepoOwnerKey       = "repo_owner"
-	WebHookSecretKey   = "webhook_secret"
-	RepoDirKey         = "repo_dir"
+	WdKey            = "WORKING_DIRECTORY"
+	EnvVarsKey       = "ENVIRONMENT_VARIABLES"
+	RunShPathEnvVar  = "RUNSH_PATH"
+	OutDirKey        = "out_dir"
+	DebugKey         = "debug"
+	PortKey          = "port"
+	DismissOutKey    = "dismiss_out"
+	TokenKey         = "token"
+	VersionKey       = "version"
+	Fuse             = "condom"
+	QueueLengthKey   = "qlength"
+	TimeoutKey       = "timeout"
+	RepoOwnerKey     = "repo_owner"
+	WebHookSecretKey = "webhook_secret"
+	RepoDirKey       = "repo_dir"
+	//Deprecated
 	RepoNameKey        = "repo_name"
 	RunDirKey          = "run_dir"
 	AvatarDir          = "avatar_dir"
@@ -45,8 +48,10 @@ const (
 	PORT           = 8085
 	APPNAME        = "tfChek"
 	runshchunk     = "runsh/"
+	hash512Query   = runshchunk + "by-sha512/"
 	APIV1          = "/api/v1/"
 	APIRUNSH       = APIV1 + runshchunk
+	APIRUNSHIDQ    = APIV1 + hash512Query
 	APICANCEL      = APIV1 + "cancel/"
 	WEBSOCKETPATH  = "/ws/"
 	WSRUNSH        = WEBSOCKETPATH + runshchunk
