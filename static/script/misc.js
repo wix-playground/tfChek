@@ -1,6 +1,7 @@
 
 let last = null;
 const urlParams = new URLSearchParams(location.search);
+const ansi_up = new AnsiUp;
 
 function start_scroll_down() {
     scroll = setInterval(function(){ window.scrollBy(0, 1000); console.log('start');}, 1500);
