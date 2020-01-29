@@ -52,7 +52,7 @@ type TaskManagerImpl struct {
 func (tm *TaskManagerImpl) Cancel(id int) error {
 	cancel := tm.cancel[id]
 	if cancel == nil {
-		return errors.New(fmt.Sprintf("task id: $d has no registered cancel function"))
+		return errors.New(fmt.Sprintf("task id: %d has no registered cancel function", id))
 	}
 	log.Printf("Task id %d is set to be cancelled", id)
 	cancel()
@@ -84,6 +84,7 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 	if ee, ok := ctx.Value(misc.EnvVarsKey).(*map[string]string); ok {
 		t.ExtraEnv = *ee
 	}
+
 	err = tm.Add(&t)
 	if err != nil {
 		if Debug {

@@ -8,7 +8,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"tfChek/git"
 	"tfChek/misc"
 	"time"
 )
@@ -24,7 +23,6 @@ func (se *StateError) Error() string {
 
 type GitHubAwareTask interface {
 	Task
-	SetGitManager(manager git.Manager)
 	GetOrigins() *[]string
 	SetAuthors(authors []string)
 	GetAuthors() *[]string

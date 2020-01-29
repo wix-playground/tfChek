@@ -34,13 +34,26 @@ type RunShTask struct {
 	outW, errW io.WriteCloser
 	save       bool
 	GitOrigins []string
-	GitManager git.Manager
 	sink       bytes.Buffer
 	authors    []string
 }
 
-func (rst *RunShTask) SetGitManager(manager git.Manager) {
-	rst.GitManager = manager
+/**
+This method has to return the git manager of the git repository, which contains executable script run.sh
+*/
+func (rst *RunShTask) getFirstGitManager() (git.Manager, error) {
+	managers, err := rst.getGitManagers()
+	if err != nil {
+		return nil, err
+	}
+	if len(*managers) == 0 {
+		msg := fmt.Sprintf("No git managers vere returned for task %d", rst.Id)
+		if Debug {
+			log.Print(msg)
+		}
+		return nil, errors.New(msg)
+	}
+	return (*managers)[0], nil
 }
 
 func (rst *RunShTask) GetOrigins() *[]string {
@@ -190,57 +203,94 @@ func (rst *RunShTask) GetStdIn() io.Writer {
 	return rst.in
 }
 
-func (rst *RunShTask) prepareGit() error {
-	if rst.GitManager == nil {
-		//return errors.New("Git manager has been not initialized")
+func convertToSSHGitUrl(url string) string {
+	//TODO: implement this
+	//TODO: write test here
+	return url
+}
 
-		//Prehaps here I have to convert git url to ssh url
-		var gurl string
-		if len(rst.GitOrigins) > 0 {
-			gurl = rst.GitOrigins[0]
-		} else {
-			return errors.New("This task contains no Git remotes. How can I checkout the repository?")
-		}
-		gitman, err := git.GetManager(gurl, rst.StateLock)
-		if err != nil {
-			return errors.New(fmt.Sprintf("Cannot obtain Git Manager for the task id: %d. Error: %s", rst.Id, err.Error()))
-		}
-		rst.GitManager = gitman
+func (rst *RunShTask) prepareGit() error {
+	//create RUNSH_APTH here for launching run.sh
+
+	//Prehaps here I have to convert git url to ssh url (in form of "git@github.com:...")
+	gms, err := rst.getGitManagers()
+	if err != nil {
+		return err
 	}
-	if rst.GitManager.IsCloned() {
-		err := rst.GitManager.Open()
-		if err != nil {
-			log.Printf("Cannot open git repository. Error: %s", err)
-			return err
+
+	for gi, gitman := range *gms {
+		if Debug {
+			log.Printf("Preparing Git repo %d (%s) of %d", gi+1, gitman.GetRemote(), len(rst.GitOrigins))
 		}
-	} else {
-		path := rst.GitManager.GetPath()
-		_, err := os.Stat(path)
-		if os.IsNotExist(err) {
-			err := os.MkdirAll(path, 0755)
+		if gitman.IsCloned() {
+			err := gitman.Open()
 			if err != nil {
-				log.Printf("Cannot create directory for git repository. Error: %s", err)
+				log.Printf("Cannot open git repository. Error: %s", err)
+				return err
+			}
+		} else {
+			path := gitman.GetPath()
+			_, err := os.Stat(path)
+			if os.IsNotExist(err) {
+				err := os.MkdirAll(path, 0755)
+				if err != nil {
+					log.Printf("Cannot create directory for git repository. Error: %s", err)
+					return err
+				}
+			}
+			err = gitman.Clone()
+			if err != nil {
+				log.Printf("Cannot clone repository. Error: %s", err)
 				return err
 			}
 		}
-		err = rst.GitManager.Clone()
+		branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
+		err = gitman.Checkout(branch)
 		if err != nil {
-			log.Printf("Cannot clone repository. Error: %s", err)
+			log.Printf("Cannot checkout branch ")
 			return err
 		}
-	}
-	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
-	err := rst.GitManager.Checkout(branch)
-	if err != nil {
-		log.Printf("Cannot checkout branch ")
+		err = gitman.Pull()
+		if err != nil {
+			log.Printf("Cannot pull changes. Error: %s", err)
+
+		}
 		return err
 	}
-	err = rst.GitManager.Pull()
-	if err != nil {
-		log.Printf("Cannot pull changes. Error: %s", err)
 
+	return nil
+}
+
+func (rst *RunShTask) getGitManagers() (*[]git.Manager, error) {
+	if len(rst.GitOrigins) == 0 {
+		return nil, errors.New(fmt.Sprintf("Cannot obtain a git manager. Task id %d contains no git remotes"))
+	} else {
+		var managers []git.Manager
+		for _, gurl := range rst.GitOrigins {
+			sshurl := convertToSSHGitUrl(gurl)
+			gitman, err := git.GetManager(sshurl, rst.StateLock)
+			if err != nil {
+				return nil, err
+			}
+			managers = append(managers, gitman)
+		}
+		return &managers, nil
 	}
-	return err
+}
+
+func (rst *RunShTask) generateRunshPath() (string, error) {
+	gms, err := rst.getGitManagers()
+	if err != nil {
+		if Debug {
+			log.Printf("Generation of RUNSH_PATH failed. Error: %s", err)
+			return "", err
+		}
+	}
+	var paths []string
+	for _, gitman := range *gms {
+		paths = append(paths, gitman.GetPath())
+	}
+	return strings.Join(paths, ":"), nil
 }
 
 func (rst *RunShTask) Run() error {
@@ -258,15 +308,32 @@ func (rst *RunShTask) Run() error {
 	defer rst.errW.Close()
 	defer rst.inR.Close()
 	//Get working directory
-	cwd := rst.GitManager.GetPath()
+	gitman, err := rst.getFirstGitManager()
+	if err != nil {
+		if Debug {
+			log.Printf("Failed to obtain git manager. Error: %s", err)
+		}
+		return err
+	}
+	cwd := gitman.GetPath()
 	log.Printf("Task id: %d working directory: %s", rst.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
+	//Inject extra vars
 	if d, ok := rst.Context.Value(misc.EnvVarsKey).(map[string]string); ok {
 		for k, v := range d {
 			sysenv = append(sysenv, fmt.Sprintf("%s=%s", k, v))
 		}
 	}
+
+	//Inject RUNSH_PATH (important!)
+	pshp, err := rst.generateRunshPath()
+	if err != nil {
+		log.Printf("Warning! Failed to generate RUNSH_PATH. Error: %s", err)
+	} else {
+		sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.RunShPathEnvVar, pshp))
+	}
+
 	log.Printf("Task id: %d environment: %s", rst.Id, sysenv)
 
 	//Save command execution output

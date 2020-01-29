@@ -13,6 +13,7 @@ const (
 const (
 	WdKey            = "WORKING_DIRECTORY"
 	EnvVarsKey       = "ENVIRONMENT_VARIABLES"
+	RunShPathEnvVar  = "RUNSH_PATH"
 	OutDirKey        = "out_dir"
 	DebugKey         = "debug"
 	PortKey          = "port"
