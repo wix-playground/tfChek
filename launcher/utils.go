@@ -64,11 +64,21 @@ func deliverCerts(repo string) error {
 		}
 		return errors.New(msg)
 	}
-
-	err := copy.Copy(certDirectoryPath, landscapePath)
-	if err != nil {
+	certsPath := landscapePath + string(os.PathSeparator) + "certs"
+	if _, err := os.Stat(landscapePath); os.IsNotExist(err) {
+		err := copy.Copy(certDirectoryPath, landscapePath)
+		if err != nil {
+			if Debug {
+				log.Printf("Failed to copy directory. Error: %s", err)
+			}
+		} else {
+			if Debug {
+				log.Printf("Certificates has been copied to the '%s'", certsPath)
+			}
+		}
+	} else {
 		if Debug {
-			log.Printf("Failed to copy directory. Error: %s", err)
+			log.Printf("Certificates check OK! at '%s'", certsPath)
 		}
 	}
 	return nil

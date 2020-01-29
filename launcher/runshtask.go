@@ -367,7 +367,6 @@ func (rst *RunShTask) Run() error {
 	cwd := gitman.GetPath()
 	//Copy certificates to the landscape directory of the git repository which contains run.sh. Usually it is the very first one
 	err = deliverCerts(cwd)
-
 	if err != nil {
 		log.Printf("Warning! Task id %d can fail, because certificates delivery failed. Error: %s", rst.Id, err)
 	}

@@ -108,22 +108,14 @@ func setupRoutes() *mux.Router {
 
 }
 
-//Deprecated
 func initialize() {
 	//Prepare configuration
 	config()
 
-	//Start GitHub API manager
-	//TODO: Use lazy repository initialization
-	//repoOwner := viper.GetString(misc.RepoOwnerKey)
-	//token := viper.GetString(misc.TokenKey)
 	if viper.GetBool(misc.DebugKey) {
 		misc.Debug = true
 		misc.LogConfig()
 	}
-	////TODO: Use this for each state while the dir is empty
-	//github.InitManager(repoName, repoOwner, token)
-	//github.GetManager().Start()
 	//Start task manager
 	tm := launcher.GetTaskManager()
 	fmt.Println("Starting task manager")

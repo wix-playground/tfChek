@@ -149,8 +149,69 @@ func writeToWS(in io.Reader, ws *websocket.Conn, errc chan<- error, lock *sync.M
 }
 
 func RunShPost(w http.ResponseWriter, r *http.Request) {
-	//TODO: remove this empty function
-	postRunsh(w, r)
+	w.Header().Set("Content-Type", "application/json")
+	msg, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Cannot read body message")
+		handleReqErr(err, w)
+		return
+	}
+	hash, err := misc.GetPayloadHash(msg, misc.PAYLOADHASH_SHA512)
+	if err != nil {
+		w.WriteHeader(http.StatusNotImplemented)
+		em := fmt.Sprintf("Cannot compute hash of the message. Error: %s", err.Error())
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+		return
+	}
+	smsg := string(msg)
+	dec := json.NewDecoder(strings.NewReader(smsg))
+	dec.DisallowUnknownFields()
+	var rgp launcher.RunSHLaunchConfig
+	//for dec.More() {
+	err = dec.Decode(&rgp)
+	if err != nil {
+		handleReqErr(err, w)
+		if Debug {
+			log.Printf("Could not parse json. Original message was: %s", smsg)
+		}
+		return
+	}
+	if Debug {
+		log.Printf("The posted command is './run.sh %s'", rgp.FullCommand)
+		log.Printf("Parsed command struct %v", rgp)
+		log.Printf("Command computed hash %s", hash)
+	}
+	envVars := make(map[string]string)
+	envVars["TFRESDIF_NOPB"] = "true"
+	cmd, err := rgp.GetHashedCommand(hash)
+	if err != nil {
+		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+		return
+	}
+	bt, err := submitCommand(cmd, &envVars, rgp.GetTimeout())
+	if err != nil {
+		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+	} else {
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
+		if err != nil {
+			log.Printf("Cannot write response. Error: %s", err)
+		}
+	}
+
 }
 
 //Deprecated
@@ -348,74 +409,6 @@ func handleReqErr(err error, w http.ResponseWriter) {
 		_, err := w.Write([]byte(errmsg))
 		if err != nil {
 			log.Printf("Cannot write a server response \"%s\". Error %s", errmsg, err)
-		}
-	}
-}
-
-func postRunsh(w http.ResponseWriter, r *http.Request) {
-	//tm := launcher.GetTaskManager()
-	w.Header().Set("Content-Type", "application/json")
-	//var cmd launcher.RunShCmd
-
-	msg, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("Cannot read body message")
-		handleReqErr(err, w)
-		return
-	}
-	hash, err := misc.GetPayloadHash(msg, misc.PAYLOADHASH_SHA512)
-	if err != nil {
-		w.WriteHeader(http.StatusNotImplemented)
-		em := fmt.Sprintf("Cannot compute hash of the message. Error: %s", err.Error())
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-		}
-		return
-	}
-	smsg := string(msg)
-	dec := json.NewDecoder(strings.NewReader(smsg))
-	dec.DisallowUnknownFields()
-	var rgp launcher.RunSHLaunchConfig
-	//for dec.More() {
-	err = dec.Decode(&rgp)
-	if err != nil {
-		handleReqErr(err, w)
-		if Debug {
-			log.Printf("Could not parse json. Original message was: %s", smsg)
-		}
-		return
-	}
-	if Debug {
-		log.Printf("The posted command is './run.sh %s'", rgp.FullCommand)
-		log.Printf("Parsed command struct %v", rgp)
-		log.Printf("Command computed hash %s", hash)
-	}
-	envVars := make(map[string]string)
-	envVars["TFRESDIF_NOPB"] = "true"
-	cmd, err := rgp.GetHashedCommand(hash)
-	if err != nil {
-		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-		}
-		return
-	}
-	bt, err := submitCommand(cmd, &envVars, rgp.GetTimeout())
-	if err != nil {
-		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-		}
-	} else {
-		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
-		if err != nil {
-			log.Printf("Cannot write response. Error: %s", err)
 		}
 	}
 }
