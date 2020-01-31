@@ -41,7 +41,7 @@ import (
 //	return nil
 //}
 
-func Save2FileFromWriter(id int) (io.WriteCloser, error) {
+func GetTaskFileWriteCloser(id int) (io.WriteCloser, error) {
 	dir := viper.GetString(misc.OutDirKey)
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {

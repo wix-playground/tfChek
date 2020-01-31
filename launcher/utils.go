@@ -45,6 +45,49 @@ func prepend2normal(r string, normal *[]string) *[]string {
 /**
 This function copies certificates to landscape directory of run.sh git repo
 */
+//TODO: DRY
+func deliverLambdas(repo string) error {
+	//Actually this has to be automated better than just copy certs from one dir to the repo dir each time it is needed
+	//By now this assumes that there must be a predeployed certificate source directory
+	lambdaDirectoryPath := strings.TrimSpace(viper.GetString(misc.LambdaSourceKey))
+	if lambdaDirectoryPath == "" {
+		if Debug {
+			log.Print("Warning! Lambda source directory is not configured")
+		}
+		return nil
+	}
+
+	landscapePath := repo + string(os.PathSeparator) + "landscape"
+	if _, err := os.Stat(landscapePath); os.IsNotExist(err) {
+		msg := fmt.Sprintf("Repository %s is missing 'landscape' directory", repo)
+		if Debug {
+			log.Print(msg)
+		}
+		return errors.New(msg)
+	}
+	lambdasPath := landscapePath + string(os.PathSeparator) + "lambdas"
+	if _, err := os.Stat(lambdasPath); os.IsNotExist(err) {
+		err := copy.Copy(lambdaDirectoryPath, lambdasPath)
+		if err != nil {
+			if Debug {
+				log.Printf("Failed to copy directory. Error: %s", err)
+			}
+		} else {
+			if Debug {
+				log.Printf("Lambdas has been copied to the '%s'", lambdasPath)
+			}
+		}
+	} else {
+		if Debug {
+			log.Printf("Lambdas check OK! at '%s'", lambdasPath)
+		}
+	}
+	return nil
+}
+
+/**
+This function copies certificates to landscape directory of run.sh git repo
+*/
 func deliverCerts(repo string) error {
 	//Actually this has to be automated better than just copy certs from one dir to the repo dir each time it is needed
 	//By now this assumes that there must be a predeployed certificate source directory
@@ -65,8 +108,8 @@ func deliverCerts(repo string) error {
 		return errors.New(msg)
 	}
 	certsPath := landscapePath + string(os.PathSeparator) + "certs"
-	if _, err := os.Stat(landscapePath); os.IsNotExist(err) {
-		err := copy.Copy(certDirectoryPath, landscapePath)
+	if _, err := os.Stat(certsPath); os.IsNotExist(err) {
+		err := copy.Copy(certDirectoryPath, certsPath)
 		if err != nil {
 			if Debug {
 				log.Printf("Failed to copy directory. Error: %s", err)

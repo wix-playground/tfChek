@@ -90,7 +90,7 @@ func GetManager(url, state string) (Manager, error) {
 		if repomngrs[key] == nil {
 			urlChunks := strings.Split(url, "/")
 			repoName := urlChunks[len(urlChunks)-1]
-			path := fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state)
+			path := strings.TrimRight(fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state), "/")
 			repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path}
 		}
 		lock.Unlock()

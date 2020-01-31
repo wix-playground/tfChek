@@ -40,6 +40,7 @@ func config() {
 	viper.SetDefault(misc.WebHookSecretKey, "notAsecretAtAll:)")
 	viper.SetDefault(misc.RepoDirKey, "/var/tfChek/repos_by_state/")
 	viper.SetDefault(misc.CertSourceKey, "")
+	viper.SetDefault(misc.CertSourceKey, "")
 	viper.SetDefault(misc.RunDirKey, "/var/run/tfChek/")
 	viper.SetDefault(misc.AvatarDir, "/var/tfChek/avatars")
 	viper.SetDefault(misc.GitHubClientId, "client_id_here")

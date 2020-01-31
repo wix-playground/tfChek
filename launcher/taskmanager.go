@@ -218,6 +218,12 @@ func NewTaskManager() TaskManager {
 
 func (tm *TaskManagerImpl) Launch(bt Task) error {
 	if bt.GetStatus() != misc.OPEN {
+		if bt.GetStatus() == misc.SCHEDULED {
+			if Debug {
+				log.Printf("Task %d has already been scheduled. Perhaps more than one webhook were precessed")
+			}
+			return nil
+		}
 		return errors.New("cannot launch task in not open status")
 	}
 	if tm.threads[bt.SyncName()] == nil {

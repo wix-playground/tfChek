@@ -370,6 +370,10 @@ func (rst *RunShTask) Run() error {
 	if err != nil {
 		log.Printf("Warning! Task id %d can fail, because certificates delivery failed. Error: %s", rst.Id, err)
 	}
+	err = deliverLambdas(cwd)
+	if err != nil {
+		log.Printf("Warning! Task id %d can fail, because lambdas delivery failed. Error: %s", rst.Id, err)
+	}
 	log.Printf("Task id: %d working directory: %s", rst.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
@@ -388,23 +392,26 @@ func (rst *RunShTask) Run() error {
 		sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.RunShPathEnvVar, pshp))
 	}
 
+	//Disable tfChek notification to avoid recursion
+	sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.NotifyTfChekEnvVar, "false"))
+
 	log.Printf("Task id: %d environment: %s", rst.Id, sysenv)
 
 	//Save command execution output
 
 	mw := io.MultiWriter(rst.outW, &rst.sink)
 
+	log.Printf("Running command '%s %s' and waiting for it to finish...", rst.Command, strings.Join(rst.Args, " "))
 	command := exec.CommandContext(rst.Context, rst.Command, rst.Args...)
 	command.Dir = cwd
 	command.Env = sysenv
-	log.Printf("Running command '%s %s' and waiting for it to finish...", rst.Command, strings.Join(rst.Args, " "))
 	command.Stdout = mw
 	command.Stderr = mw
 	//command.Stdin = rst.inR
 	command.Stdin = nil
 	//Ugly but I did not found a better place
 	if rst.save {
-		out, err := storer.Save2FileFromWriter(rst.Id)
+		out, err := storer.GetTaskFileWriteCloser(rst.Id)
 		if err != nil {
 			log.Printf("Save to file for task %d is disabled. Error: %s", rst.Id, err)
 		} else {

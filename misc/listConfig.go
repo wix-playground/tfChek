@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var Debug = false
+var Debug = viper.GetBool(DebugKey)
 
 func LogConfig() {
 	builder := strings.Builder{}
