@@ -2,7 +2,9 @@ package github
 
 import (
 	"fmt"
+	"github.com/whilp/git-urls"
 	"log"
+	"regexp"
 	"strconv"
 	"sync"
 	"tfChek/misc"
@@ -33,10 +35,35 @@ func NewTaskResult(taskId int, successful bool, output *string, authors *[]strin
 func InitManager(repository, owner, token string) {
 	ml.Lock()
 	s := make(chan *TaskResult, 20)
-	c := NewClientRunSH(repository, owner, token)
+	c := NewClientRunSH(extractRepoName(repository), owner, token)
 	managers[repository] = &Manager{data: s, client: c, stopped: false, started: false}
 	ml.Unlock()
 	return
+}
+
+func extractRepoName(repository string) string {
+	parsed, err := giturls.Parse(repository)
+	if err != nil {
+		if Debug {
+			log.Printf("Cannot parse URL: '%s' falling back to original")
+		}
+		return repository
+	}
+	re, err := regexp.Compile(".*/(.*?)(\\.git)*$")
+	if err != nil {
+		if Debug {
+			log.Printf("Cannot compile regex '%s' falling back to original")
+		}
+		return repository
+	}
+	submatch := re.FindStringSubmatch(parsed.Path)
+	if len(submatch) > 2 {
+		return submatch[1]
+	} else {
+		// Falling back
+		return repository
+	}
+
 }
 
 func GetManager(repository string) *Manager {

@@ -17,6 +17,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
+	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
 	go.mongodb.org/mongo-driver v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413 // indirect
 	golang.org/x/image v0.0.0-20191214001246-9130b4cfad52 // indirect
