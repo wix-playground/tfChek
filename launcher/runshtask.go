@@ -274,9 +274,9 @@ func (rst *RunShTask) prepareGit() error {
 		err = gitman.Pull()
 		if err != nil {
 			log.Printf("Cannot pull changes. Error: %s", err)
-
+			return err
 		}
-		return err
+
 	}
 	return nil
 }
