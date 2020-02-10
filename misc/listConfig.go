@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-var Debug = viper.GetBool(DebugKey)
-
 func LogConfig() {
 	builder := strings.Builder{}
 	builder.WriteString("Loaded Configuration:\n")
@@ -29,7 +27,7 @@ func LogConfig() {
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", OAuthAppName, viper.GetString(OAuthAppName)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", OAuthEndpoint, viper.GetString(OAuthEndpoint)))
 
-	if Debug {
+	if viper.GetBool(DebugKey) {
 		log.Printf(builder.String())
 	}
 }

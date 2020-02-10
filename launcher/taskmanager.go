@@ -87,7 +87,7 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 
 	err = tm.Add(&t)
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot add task %v. Error: %s", t, err)
 		}
 	}
@@ -97,7 +97,7 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 
 func (tm *TaskManagerImpl) Add(t Task) error {
 	if t == nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Println("Cannot add nil task")
 		}
 		return errors.New("cannot add nil task")
@@ -197,7 +197,7 @@ func writeSequence(i int) {
 	defer seqFile.Close()
 	_, err = seqFile.Write([]byte(strconv.Itoa(i)))
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot save sequence %d to file %s Error: %s", i, rdf, err)
 		}
 	}
@@ -219,8 +219,8 @@ func NewTaskManager() TaskManager {
 func (tm *TaskManagerImpl) Launch(bt Task) error {
 	if bt.GetStatus() != misc.OPEN {
 		if bt.GetStatus() == misc.SCHEDULED {
-			if Debug {
-				log.Printf("Task %d has already been scheduled. Perhaps more than one webhook were precessed")
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Task %d has already been scheduled. Perhaps more than one webhook were precessed", bt.GetId())
 			}
 			return nil
 		}
@@ -234,7 +234,7 @@ func (tm *TaskManagerImpl) Launch(bt Task) error {
 		tm.lock.Unlock()
 	}
 	bt.SetStatus(misc.SCHEDULED)
-	if Debug {
+	if viper.GetBool(misc.DebugKey) {
 		log.Printf("Task %d has been scheduled", bt.GetId())
 	}
 	tm.threads[bt.SyncName()] <- bt

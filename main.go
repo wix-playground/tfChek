@@ -114,7 +114,6 @@ func initialize() {
 	config()
 
 	if viper.GetBool(misc.DebugKey) {
-		misc.Debug = true
 		misc.LogConfig()
 	}
 	//Start task manager

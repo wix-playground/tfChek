@@ -49,7 +49,7 @@ func (rst *RunShTask) getFirstGitManager() (git.Manager, error) {
 	}
 	if len(*managers) == 0 {
 		msg := fmt.Sprintf("No git managers vere returned for task %d", rst.Id)
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Print(msg)
 		}
 		return nil, errors.New(msg)
@@ -93,7 +93,7 @@ func (rst *RunShTask) Schedule() error {
 
 func (rst *RunShTask) Start() error {
 	if rst.Status < misc.STARTED {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Start of task %s", rst.Name)
 		}
 		rst.Status = misc.STARTED
@@ -105,27 +105,32 @@ func (rst *RunShTask) Start() error {
 func (rst *RunShTask) Done() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.DONE
-		fgm, err := rst.getFirstGitManager()
+		gitManagers, err := rst.getGitManagers()
 		if err != nil {
-			if Debug {
-				log.Printf("Cannot get first Git manager. Error: %s", err)
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Cannot get Git managers. Error: %s", err)
 			}
 			return err
 		}
-		manager := github.GetManager(fgm.GetRemote())
-		if manager != nil {
-			c := manager.GetChannel()
-			o := rst.GetOut()
-			if o == "" {
-				o = misc.NOOUTPUT
+		for ghi, ghm := range *gitManagers {
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Processing GitHub manager %d of %d", ghi, len(*gitManagers))
 			}
-			data := github.NewTaskResult(rst.Id, true, &o, rst.GetAuthors())
-			c <- data
+			manager := github.GetManager(ghm.GetRemote())
+			if manager != nil {
+				c := manager.GetChannel()
+				o := rst.GetOut()
+				if o == "" {
+					o = misc.NOOUTPUT
+				}
+				data := github.NewTaskResult(rst.Id, true, &o, rst.GetAuthors())
+				c <- data
+			}
 		}
-		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be done, because it has been not Started. Current state number is %d", rst.Status)}
 	}
+	return nil
 }
 
 func (rst *RunShTask) Fail() error {
@@ -133,7 +138,7 @@ func (rst *RunShTask) Fail() error {
 		rst.Status = misc.FAILED
 		fgm, err := rst.getFirstGitManager()
 		if err != nil {
-			if Debug {
+			if viper.GetBool(misc.DebugKey) {
 				log.Printf("Cannot get first Git manager. Error: %s", err)
 			}
 			return err
@@ -159,7 +164,7 @@ func (rst *RunShTask) TimeoutFail() error {
 		rst.Status = misc.TIMEOUT
 		fgm, err := rst.getFirstGitManager()
 		if err != nil {
-			if Debug {
+			if viper.GetBool(misc.DebugKey) {
 				log.Printf("Cannot get first Git manager. Error: %s", err)
 			}
 			return err
@@ -240,7 +245,7 @@ func (rst *RunShTask) prepareGit() error {
 	}
 
 	for gi, gitman := range *gms {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Preparing Git repo %d (%s) of %d", gi+1, gitman.GetRemote(), len(rst.GitOrigins))
 		}
 		if gitman.IsCloned() {
@@ -301,7 +306,7 @@ func (rst *RunShTask) getGitManagers() (*[]git.Manager, error) {
 func (rst *RunShTask) generateRunshPath() (string, error) {
 	gms, err := rst.getGitManagers()
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Generation of RUNSH_PATH failed. Error: %s", err)
 			return "", err
 		}
@@ -317,7 +322,7 @@ func (rst *RunShTask) prepareGitHub() error {
 	gitManagers, err := rst.getGitManagers()
 	if err != nil {
 		//Add Debug output here
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot prepare GitHub, because Git manager are not available. Error: %s", err)
 		}
 		return err
@@ -359,7 +364,7 @@ func (rst *RunShTask) Run() error {
 	//Get working directory
 	gitman, err := rst.getFirstGitManager()
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Failed to obtain git manager. Error: %s", err)
 		}
 		return err

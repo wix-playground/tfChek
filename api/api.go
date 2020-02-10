@@ -27,7 +27,6 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
-var Debug bool = viper.GetBool(misc.DebugKey)
 
 func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	//Debug websocket
@@ -174,12 +173,12 @@ func RunShPost(w http.ResponseWriter, r *http.Request) {
 	err = dec.Decode(&rgp)
 	if err != nil {
 		handleReqErr(err, w)
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Could not parse json. Original message was: %s", smsg)
 		}
 		return
 	}
-	if Debug {
+	if viper.GetBool(misc.DebugKey) {
 		log.Printf("The posted command is './run.sh %s'", rgp.FullCommand)
 		log.Printf("Parsed command struct %v", rgp)
 		log.Printf("Command computed hash %s", hash)

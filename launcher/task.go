@@ -84,7 +84,7 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 
 	//Check fuse (condom) option
 	if viper.GetBool(misc.Fuse) {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("forcefully disabling applying ability due to '%s' option is set to true", misc.Fuse)
 		}
 		no = true
@@ -105,7 +105,7 @@ func (rc *RunSHLaunchConfig) GetTimeout() time.Duration {
 	} else {
 		t, err := strconv.Atoi(rc.CommandOptions.Timeout)
 		if err != nil {
-			if Debug {
+			if viper.GetBool(misc.DebugKey) {
 				log.Printf("Cannot parse timeout %s. Using default value from confguration file %d", rc.CommandOptions.Timeout, viper.GetInt(misc.TimeoutKey))
 			}
 			return timeout
@@ -153,5 +153,3 @@ func GetStatusString(status TaskStatus) string {
 		return "unknown"
 	}
 }
-
-var Debug bool = viper.GetBool(misc.DebugKey)

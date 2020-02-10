@@ -2,6 +2,7 @@ package github
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"github.com/whilp/git-urls"
 	"log"
 	"regexp"
@@ -12,7 +13,6 @@ import (
 
 var ml sync.Mutex
 var managers map[string]*Manager = make(map[string]*Manager)
-var Debug bool = false
 
 type Manager struct {
 	data    chan *TaskResult
@@ -44,14 +44,14 @@ func InitManager(repository, owner, token string) {
 func extractRepoName(repository string) string {
 	parsed, err := giturls.Parse(repository)
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot parse URL: '%s' falling back to original")
 		}
 		return repository
 	}
 	re, err := regexp.Compile(".*/(.*?)(\\.git)*$")
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot compile regex '%s' falling back to original")
 		}
 		return repository
@@ -69,7 +69,7 @@ func extractRepoName(repository string) string {
 func GetManager(repository string) *Manager {
 	m := managers[repository]
 	if m == nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("No GitHub manager for the repository %s. You might want to initialize this manager first")
 		}
 	}
@@ -88,10 +88,10 @@ func (m *Manager) starter() {
 		if m.stopped {
 			break
 		}
-		log.Println("Waiting for a new branch to create pull request")
-		branch := <-m.data
-		if branch != nil {
-			process(m, branch)
+		log.Println("Waiting for a new taskResult to create pull request")
+		taskResult := <-m.data
+		if taskResult != nil {
+			process(m, taskResult)
 		}
 	}
 }

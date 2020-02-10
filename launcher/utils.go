@@ -51,7 +51,7 @@ func deliverLambdas(repo string) error {
 	//By now this assumes that there must be a predeployed certificate source directory
 	lambdaDirectoryPath := strings.TrimSpace(viper.GetString(misc.LambdaSourceKey))
 	if lambdaDirectoryPath == "" {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Print("Warning! Lambda source directory is not configured")
 		}
 		return nil
@@ -60,7 +60,7 @@ func deliverLambdas(repo string) error {
 	landscapePath := repo + string(os.PathSeparator) + "landscape"
 	if _, err := os.Stat(landscapePath); os.IsNotExist(err) {
 		msg := fmt.Sprintf("Repository %s is missing 'landscape' directory", repo)
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Print(msg)
 		}
 		return errors.New(msg)
@@ -69,16 +69,16 @@ func deliverLambdas(repo string) error {
 	if _, err := os.Stat(lambdasPath); os.IsNotExist(err) {
 		err := copy.Copy(lambdaDirectoryPath, lambdasPath)
 		if err != nil {
-			if Debug {
+			if viper.GetBool(misc.DebugKey) {
 				log.Printf("Failed to copy directory. Error: %s", err)
 			}
 		} else {
-			if Debug {
+			if viper.GetBool(misc.DebugKey) {
 				log.Printf("Lambdas has been copied to the '%s'", lambdasPath)
 			}
 		}
 	} else {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Lambdas check OK! at '%s'", lambdasPath)
 		}
 	}
@@ -93,7 +93,7 @@ func deliverCerts(repo string) error {
 	//By now this assumes that there must be a predeployed certificate source directory
 	certDirectoryPath := strings.TrimSpace(viper.GetString(misc.CertSourceKey))
 	if certDirectoryPath == "" {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Print("Warning! Certificates source directory is not configured")
 		}
 		return nil
@@ -102,7 +102,7 @@ func deliverCerts(repo string) error {
 	landscapePath := repo + string(os.PathSeparator) + "landscape"
 	if _, err := os.Stat(landscapePath); os.IsNotExist(err) {
 		msg := fmt.Sprintf("Repository %s is missing 'landscape' directory", repo)
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Print(msg)
 		}
 		return errors.New(msg)
@@ -111,16 +111,16 @@ func deliverCerts(repo string) error {
 	if _, err := os.Stat(certsPath); os.IsNotExist(err) {
 		err := copy.Copy(certDirectoryPath, certsPath)
 		if err != nil {
-			if Debug {
+			if viper.GetBool(misc.DebugKey) {
 				log.Printf("Failed to copy directory. Error: %s", err)
 			}
 		} else {
-			if Debug {
+			if viper.GetBool(misc.DebugKey) {
 				log.Printf("Certificates has been copied to the '%s'", certsPath)
 			}
 		}
 	} else {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Certificates check OK! at '%s'", certsPath)
 		}
 	}
