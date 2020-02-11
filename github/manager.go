@@ -109,7 +109,7 @@ func process(m *Manager, prd *TaskResult) {
 			if err != nil {
 				log.Println("Failed to assign reviewers")
 			}
-			err = m.client.Comment(*number, prd.log)
+			err = m.client.Comment(*number, wrapComment(*prd.log))
 			if err != nil {
 				log.Printf("Cannot comment PR %d Error: %s", number, err)
 			}
@@ -133,7 +133,7 @@ func process(m *Manager, prd *TaskResult) {
 			log.Printf("Failed to create GitHub Issue Error: %s", err)
 		} else {
 			log.Printf("New Issue #%d has been created", *number)
-			err = m.client.Comment(*number, prd.log)
+			err = m.client.Comment(*number, wrapComment(*prd.log))
 			if err != nil {
 				log.Printf("Cannot comment issue %d Error: %s", number, err)
 			}

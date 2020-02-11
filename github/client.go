@@ -25,6 +25,11 @@ type ClientRunSH struct {
 	context    context.Context
 }
 
+func wrapComment(data string) *string {
+	code := fmt.Sprintf("Command output:\n```%s```", data)
+	return &code
+}
+
 func (c *ClientRunSH) getHeadSHA(number int) (string, error) {
 	pullRequest, _, err := c.client.PullRequests.Get(c.context, c.Owner, c.Repository, number)
 	if err != nil {
