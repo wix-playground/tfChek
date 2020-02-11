@@ -39,7 +39,8 @@ func config() {
 	viper.SetDefault(misc.RepoOwnerKey, "wix-system")
 	viper.SetDefault(misc.WebHookSecretKey, "notAsecretAtAll:)")
 	viper.SetDefault(misc.RepoDirKey, "/var/tfChek/repos_by_state/")
-	viper.SetDefault(misc.RepoNameKey, "production_42")
+	viper.SetDefault(misc.CertSourceKey, "")
+	viper.SetDefault(misc.CertSourceKey, "")
 	viper.SetDefault(misc.RunDirKey, "/var/run/tfChek/")
 	viper.SetDefault(misc.AvatarDir, "/var/tfChek/avatars")
 	viper.SetDefault(misc.GitHubClientId, "client_id_here")
@@ -73,8 +74,9 @@ func setupRoutes() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc(misc.WSRUNSH+"{Id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
 	router.Path(misc.APIRUNSHIDQ + "{Hash}").Methods("GET").Name("Query by hash").HandlerFunc(api.GetTaskIdByHash)
-	router.Path(misc.APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
-	router.Path(misc.APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
+	//These 2 API endpoints are going to be removed
+	//router.Path(misc.APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
+	//router.Path(misc.APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
 	router.Path(misc.APIRUNSH).Methods("POST").Name("run.sh universal task accepting endpoint").HandlerFunc(api.RunShPost)
 	router.Path(misc.APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
 	router.Path(misc.WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
@@ -108,22 +110,13 @@ func setupRoutes() *mux.Router {
 
 }
 
-//Deprecated
 func initialize() {
 	//Prepare configuration
 	config()
-	//Start GitHub API manager
-	//TODO: Use lazy repository initialization
-	repoName := viper.GetString(misc.RepoNameKey)
-	repoOwner := viper.GetString(misc.RepoOwnerKey)
-	token := viper.GetString(misc.TokenKey)
+
 	if viper.GetBool(misc.DebugKey) {
-		misc.Debug = true
 		misc.LogConfig()
 	}
-	//TODO: Use this for each state while the dir is empty
-	github.InitManager(repoName, repoOwner, token)
-	github.GetManager().Start()
 	//Start task manager
 	tm := launcher.GetTaskManager()
 	fmt.Println("Starting task manager")
@@ -137,7 +130,7 @@ func showVersion() {
 func main() {
 	initialize()
 	defer launcher.GetTaskManager().Close()
-	defer github.GetManager().Close()
+	defer github.CloseAll()
 	fmt.Println("Starting server")
 	router := setupRoutes()
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt(misc.PortKey)), router))

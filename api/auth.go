@@ -59,8 +59,8 @@ func GetAuthInfoHandler() *AuthInfoHandler {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 		} else {
-			w.Write([]byte(cid))
 			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(cid))
 		}
 	}}
 	return &h

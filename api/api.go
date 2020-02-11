@@ -27,7 +27,6 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
-var Debug bool = viper.GetBool(misc.DebugKey)
 
 func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	//Debug websocket
@@ -149,19 +148,83 @@ func writeToWS(in io.Reader, ws *websocket.Conn, errc chan<- error, lock *sync.M
 }
 
 func RunShPost(w http.ResponseWriter, r *http.Request) {
-	//TODO: remove this empty function
-	postRunsh(w, r)
+	w.Header().Set("Content-Type", "application/json")
+	msg, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Cannot read body message")
+		handleReqErr(err, w)
+		return
+	}
+	hash, err := misc.GetPayloadHash(msg, misc.PAYLOADHASH_SHA512)
+	if err != nil {
+		w.WriteHeader(http.StatusNotImplemented)
+		em := fmt.Sprintf("Cannot compute hash of the message. Error: %s", err.Error())
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+		return
+	}
+	smsg := string(msg)
+	dec := json.NewDecoder(strings.NewReader(smsg))
+	dec.DisallowUnknownFields()
+	var rgp launcher.RunSHLaunchConfig
+	//for dec.More() {
+	err = dec.Decode(&rgp)
+	if err != nil {
+		handleReqErr(err, w)
+		if viper.GetBool(misc.DebugKey) {
+			log.Printf("Could not parse json. Original message was: %s", smsg)
+		}
+		return
+	}
+	if viper.GetBool(misc.DebugKey) {
+		log.Printf("The posted command is './run.sh %s'", rgp.FullCommand)
+		log.Printf("Parsed command struct %v", rgp)
+		log.Printf("Command computed hash %s", hash)
+	}
+	envVars := make(map[string]string)
+	//Explicitly Disable progress bar fo tfResDif
+	envVars["TFRESDIF_NOPB"] = "true"
+	//Explicitly disable notification of tfChek to avoid endless loop
+	envVars["NOTIFY_TFCHEK"] = "false"
+	cmd, err := rgp.GetHashedCommand(hash)
+	if err != nil {
+		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+		return
+	}
+	bt, err := submitCommand(cmd, &envVars, rgp.GetTimeout())
+	if err != nil {
+		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+		}
+	} else {
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
+		if err != nil {
+			log.Printf("Cannot write response. Error: %s", err)
+		}
+	}
+
 }
 
-//Deprecated
-func RunShEnv(w http.ResponseWriter, r *http.Request) {
-	v := mux.Vars(r)
-	env := v["Env"]
-	layer := ""
-	envVars := make(map[string]string)
-	envVars["TFRESDIF_NOPB"] = "true"
-	getRunsh(w, r, env, layer, time.Duration(viper.GetInt(misc.TimeoutKey))*time.Second, &envVars)
-}
+////Deprecated
+//func RunShEnv(w http.ResponseWriter, r *http.Request) {
+//	v := mux.Vars(r)
+//	env := v["Env"]
+//	layer := ""
+//	envVars := make(map[string]string)
+//	envVars["TFRESDIF_NOPB"] = "true"
+//	getRunsh(w, r, env, layer, time.Duration(viper.GetInt(misc.TimeoutKey))*time.Second, &envVars)
+//}
 
 func Cancel(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
@@ -211,14 +274,14 @@ func Cancel(w http.ResponseWriter, r *http.Request) {
 }
 
 //Deprecated
-func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
-	v := mux.Vars(r)
-	env := v["Env"]
-	layer := v["Layer"]
-	envVars := make(map[string]string)
-	envVars["TFRESDIF_NOPB"] = "true"
-	getRunsh(w, r, env, layer, time.Duration(viper.GetInt(misc.TimeoutKey))*time.Second, &envVars)
-}
+//func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
+//	v := mux.Vars(r)
+//	env := v["Env"]
+//	layer := v["Layer"]
+//	envVars := make(map[string]string)
+//	envVars["TFRESDIF_NOPB"] = "true"
+//	getRunsh(w, r, env, layer, time.Duration(viper.GetInt(misc.TimeoutKey))*time.Second, &envVars)
+//}
 
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
@@ -352,74 +415,6 @@ func handleReqErr(err error, w http.ResponseWriter) {
 	}
 }
 
-func postRunsh(w http.ResponseWriter, r *http.Request) {
-	//tm := launcher.GetTaskManager()
-	w.Header().Set("Content-Type", "application/json")
-	//var cmd launcher.RunShCmd
-
-	msg, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("Cannot read body message")
-		handleReqErr(err, w)
-		return
-	}
-	hash, err := misc.GetPayloadHash(msg, misc.PAYLOADHASH_SHA512)
-	if err != nil {
-		w.WriteHeader(http.StatusNotImplemented)
-		em := fmt.Sprintf("Cannot compute hash of the message. Error: %s", err.Error())
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-		}
-		return
-	}
-	smsg := string(msg)
-	dec := json.NewDecoder(strings.NewReader(smsg))
-	dec.DisallowUnknownFields()
-	var rgp launcher.RunSHLaunchConfig
-	//for dec.More() {
-	err = dec.Decode(&rgp)
-	if err != nil {
-		handleReqErr(err, w)
-		if Debug {
-			log.Printf("Could not parse json. Original message was: %s", smsg)
-		}
-		return
-	}
-	if Debug {
-		log.Printf("The posted command is './run.sh %s'", rgp.FullCommand)
-		log.Printf("Parsed command struct %v", rgp)
-		log.Printf("Command computed hash %s", hash)
-	}
-	envVars := make(map[string]string)
-	envVars["TFRESDIF_NOPB"] = "true"
-	cmd, err := rgp.GetHashedCommand(hash)
-	if err != nil {
-		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-		}
-		return
-	}
-	bt, err := submitCommand(cmd, &envVars, rgp.GetTimeout())
-	if err != nil {
-		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-		}
-	} else {
-		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
-		if err != nil {
-			log.Printf("Cannot write response. Error: %s", err)
-		}
-	}
-}
-
 func GetTaskIdByHash(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
 	hash := v["Hash"]
@@ -443,42 +438,43 @@ func GetTaskIdByHash(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getRunsh(w http.ResponseWriter, r *http.Request, env, layer string, timeout time.Duration, envVars *map[string]string) {
-	w.Header().Set("Content-Type", "application/json")
-	var cmd launcher.RunShCmd
-	err := r.ParseForm()
-	if err != nil {
-		em := fmt.Sprintf("Cannot parse request. Error: %s", err.Error())
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-		}
-	}
-	targets := r.Form["target"]
-	omit := r.FormValue("omit")
-	all := r.Form.Get("all")
-	no := r.Form.Get("no")
-	yes := r.Form.Get("yes")
-	startTime := time.Now()
-	cmd = launcher.RunShCmd{Layer: layer, Env: env, All: all == "true", Omit: omit == "true", Targets: targets, No: no == "true", Yes: yes == "true", Started: &startTime}
-
-	bt, err := submitCommand(&cmd, envVars, timeout)
-
-	if err != nil {
-		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		_, e := w.Write([]byte(em))
-		if e != nil {
-			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
-		}
-	} else {
-		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
-		if err != nil {
-			log.Printf("Cannot write response. Error: %s", err)
-		}
-	}
-}
+//Deprecated
+//func getRunsh(w http.ResponseWriter, r *http.Request, env, layer string, timeout time.Duration, envVars *map[string]string) {
+//	w.Header().Set("Content-Type", "application/json")
+//	var cmd launcher.RunShCmd
+//	err := r.ParseForm()
+//	if err != nil {
+//		em := fmt.Sprintf("Cannot parse request. Error: %s", err.Error())
+//		_, e := w.Write([]byte(em))
+//		if e != nil {
+//			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+//		}
+//	}
+//	targets := r.Form["target"]
+//	omit := r.FormValue("omit")
+//	all := r.Form.Get("all")
+//	no := r.Form.Get("no")
+//	yes := r.Form.Get("yes")
+//	startTime := time.Now()
+//	cmd = launcher.RunShCmd{Layer: layer, Env: env, All: all == "true", Omit: omit == "true", Targets: targets, No: no == "true", Yes: yes == "true", Started: &startTime}
+//
+//	bt, err := submitCommand(&cmd, envVars, timeout)
+//
+//	if err != nil {
+//		em := fmt.Sprintf("Cannot create background task. Error: %s", err.Error())
+//		w.WriteHeader(http.StatusInternalServerError)
+//		_, e := w.Write([]byte(em))
+//		if e != nil {
+//			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
+//		}
+//	} else {
+//		w.WriteHeader(http.StatusCreated)
+//		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
+//		if err != nil {
+//			log.Printf("Cannot write response. Error: %s", err)
+//		}
+//	}
+//}
 
 func submitCommand(cmd *launcher.RunShCmd, envVars *map[string]string, timeout time.Duration) (launcher.Task, error) {
 	tm := launcher.GetTaskManager()

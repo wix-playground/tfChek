@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/acarl005/stripansi"
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"os"
@@ -48,7 +49,7 @@ func (rst *RunShTask) getFirstGitManager() (git.Manager, error) {
 	}
 	if len(*managers) == 0 {
 		msg := fmt.Sprintf("No git managers vere returned for task %d", rst.Id)
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Print(msg)
 		}
 		return nil, errors.New(msg)
@@ -92,7 +93,7 @@ func (rst *RunShTask) Schedule() error {
 
 func (rst *RunShTask) Start() error {
 	if rst.Status < misc.STARTED {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Start of task %s", rst.Name)
 		}
 		rst.Status = misc.STARTED
@@ -104,27 +105,45 @@ func (rst *RunShTask) Start() error {
 func (rst *RunShTask) Done() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.DONE
-		//TODO: Obtain a particulat git manager here
-		manager := github.GetManager()
-		if manager != nil {
-			c := manager.GetChannel()
-			o := rst.GetOut()
-			if o == "" {
-				o = misc.NOOUTPUT
+		gitManagers, err := rst.getGitManagers()
+		if err != nil {
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Cannot get Git managers. Error: %s", err)
 			}
-			data := github.NewTaskResult(rst.Id, true, &o, rst.GetAuthors())
-			c <- data
+			return err
 		}
-		return nil
+		for ghi, ghm := range *gitManagers {
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Processing GitHub manager %d of %d", ghi+1, len(*gitManagers))
+			}
+			manager := github.GetManager(ghm.GetRemote())
+			if manager != nil {
+				c := manager.GetChannel()
+				o := rst.GetOut()
+				if o == "" {
+					o = misc.NOOUTPUT
+				}
+				data := github.NewTaskResult(rst.Id, true, &o, rst.GetAuthors())
+				c <- data
+			}
+		}
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be done, because it has been not Started. Current state number is %d", rst.Status)}
 	}
+	return nil
 }
 
 func (rst *RunShTask) Fail() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.FAILED
-		manager := github.GetManager()
+		fgm, err := rst.getFirstGitManager()
+		if err != nil {
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Cannot get first Git manager. Error: %s", err)
+			}
+			return err
+		}
+		manager := github.GetManager(fgm.GetRemote())
 		if manager != nil {
 			c := manager.GetChannel()
 			o := rst.GetOut()
@@ -143,7 +162,14 @@ func (rst *RunShTask) Fail() error {
 func (rst *RunShTask) TimeoutFail() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.TIMEOUT
-		manager := github.GetManager()
+		fgm, err := rst.getFirstGitManager()
+		if err != nil {
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Cannot get first Git manager. Error: %s", err)
+			}
+			return err
+		}
+		manager := github.GetManager(fgm.GetRemote())
 		if manager != nil {
 			c := manager.GetChannel()
 			o := rst.GetOut()
@@ -219,7 +245,7 @@ func (rst *RunShTask) prepareGit() error {
 	}
 
 	for gi, gitman := range *gms {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Preparing Git repo %d (%s) of %d", gi+1, gitman.GetRemote(), len(rst.GitOrigins))
 		}
 		if gitman.IsCloned() {
@@ -253,11 +279,10 @@ func (rst *RunShTask) prepareGit() error {
 		err = gitman.Pull()
 		if err != nil {
 			log.Printf("Cannot pull changes. Error: %s", err)
-
+			return err
 		}
-		return err
-	}
 
+	}
 	return nil
 }
 
@@ -281,7 +306,7 @@ func (rst *RunShTask) getGitManagers() (*[]git.Manager, error) {
 func (rst *RunShTask) generateRunshPath() (string, error) {
 	gms, err := rst.getGitManagers()
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Generation of RUNSH_PATH failed. Error: %s", err)
 			return "", err
 		}
@@ -293,6 +318,29 @@ func (rst *RunShTask) generateRunshPath() (string, error) {
 	return strings.Join(paths, ":"), nil
 }
 
+func (rst *RunShTask) prepareGitHub() error {
+	gitManagers, err := rst.getGitManagers()
+	if err != nil {
+		//Add Debug output here
+		if viper.GetBool(misc.DebugKey) {
+			log.Printf("Cannot prepare GitHub, because Git manager are not available. Error: %s", err)
+		}
+		return err
+	}
+	repoOwner := viper.GetString(misc.RepoOwnerKey)
+	token := viper.GetString(misc.TokenKey)
+	for _, gm := range *gitManagers {
+		gitHubManager := github.GetManager(gm.GetRemote())
+		if gitHubManager == nil {
+			//Initialize GitHub manager
+			github.InitManager(gm.GetRemote(), repoOwner, token)
+			gitHubManager = github.GetManager(gm.GetRemote())
+		}
+		gitHubManager.Start()
+	}
+	return nil
+}
+
 func (rst *RunShTask) Run() error {
 	if rst.Status != misc.SCHEDULED {
 		return errors.New("cannot run unscheduled task")
@@ -300,7 +348,13 @@ func (rst *RunShTask) Run() error {
 	//Perform git routines
 	err := rst.prepareGit()
 	if err != nil {
-		log.Printf("Cannot prepare git repository. Error: %s", err)
+		log.Printf("Cannot prepare git repositories. Error: %s", err)
+		rst.ForceFail()
+		return err
+	}
+	err = rst.prepareGitHub()
+	if err != nil {
+		log.Printf("Cannot prepare GitHub repositories. Error: %s", err)
 		rst.ForceFail()
 		return err
 	}
@@ -310,12 +364,21 @@ func (rst *RunShTask) Run() error {
 	//Get working directory
 	gitman, err := rst.getFirstGitManager()
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Failed to obtain git manager. Error: %s", err)
 		}
 		return err
 	}
 	cwd := gitman.GetPath()
+	//Copy certificates to the landscape directory of the git repository which contains run.sh. Usually it is the very first one
+	err = deliverCerts(cwd)
+	if err != nil {
+		log.Printf("Warning! Task id %d can fail, because certificates delivery failed. Error: %s", rst.Id, err)
+	}
+	err = deliverLambdas(cwd)
+	if err != nil {
+		log.Printf("Warning! Task id %d can fail, because lambdas delivery failed. Error: %s", rst.Id, err)
+	}
 	log.Printf("Task id: %d working directory: %s", rst.Id, cwd)
 	//Get environment
 	sysenv := os.Environ()
@@ -334,23 +397,26 @@ func (rst *RunShTask) Run() error {
 		sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.RunShPathEnvVar, pshp))
 	}
 
+	//Disable tfChek notification to avoid recursion
+	sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.NotifyTfChekEnvVar, "false"))
+
 	log.Printf("Task id: %d environment: %s", rst.Id, sysenv)
 
 	//Save command execution output
 
 	mw := io.MultiWriter(rst.outW, &rst.sink)
 
+	log.Printf("Running command '%s %s' and waiting for it to finish...", rst.Command, strings.Join(rst.Args, " "))
 	command := exec.CommandContext(rst.Context, rst.Command, rst.Args...)
 	command.Dir = cwd
 	command.Env = sysenv
-	log.Printf("Running command '%s %s' and waiting for it to finish...", rst.Command, strings.Join(rst.Args, " "))
 	command.Stdout = mw
 	command.Stderr = mw
 	//command.Stdin = rst.inR
 	command.Stdin = nil
 	//Ugly but I did not found a better place
 	if rst.save {
-		out, err := storer.Save2FileFromWriter(rst.Id)
+		out, err := storer.GetTaskFileWriteCloser(rst.Id)
 		if err != nil {
 			log.Printf("Save to file for task %d is disabled. Error: %s", rst.Id, err)
 		} else {

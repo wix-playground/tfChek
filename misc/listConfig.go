@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-var Debug = false
-
 func LogConfig() {
 	builder := strings.Builder{}
 	builder.WriteString("Loaded Configuration:\n")
@@ -22,14 +20,14 @@ func LogConfig() {
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", TimeoutKey, viper.GetInt(TimeoutKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RepoOwnerKey, viper.GetString(RepoOwnerKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RepoDirKey, viper.GetString(RepoDirKey)))
-	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RepoNameKey, viper.GetString(RepoNameKey)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", CertSourceKey, viper.GetString(CertSourceKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RunDirKey, viper.GetString(RunDirKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", AvatarDir, viper.GetString(AvatarDir)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", GitHubClientId, viper.GetString(GitHubClientId)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", OAuthAppName, viper.GetString(OAuthAppName)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", OAuthEndpoint, viper.GetString(OAuthEndpoint)))
 
-	if Debug {
+	if viper.GetBool(DebugKey) {
 		log.Printf(builder.String())
 	}
 }

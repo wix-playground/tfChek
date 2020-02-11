@@ -15,7 +15,6 @@ import (
 	"tfChek/misc"
 )
 
-var Debug bool = viper.GetBool(misc.DebugKey)
 var lock sync.Mutex
 
 //Key split by ';' on url and state
@@ -90,7 +89,7 @@ func GetManager(url, state string) (Manager, error) {
 		if repomngrs[key] == nil {
 			urlChunks := strings.Split(url, "/")
 			repoName := urlChunks[len(urlChunks)-1]
-			path := fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state)
+			path := strings.TrimRight(fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state), "/")
 			repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path}
 		}
 		lock.Unlock()
@@ -107,14 +106,14 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 	}
 	remotes, err := b.repo.Remotes()
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot get remotes of git repository %s. Error: %s", b.repoPath, err)
 		}
 		return err
 	}
 	worktree, err := b.repo.Worktree()
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot get worktree of git repository %s. Error: %s", b.repoPath, err)
 		}
 		return err
@@ -174,7 +173,7 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 func (b *BuiltInManager) Pull() error {
 	gitRef, err := b.repo.Head()
 	if err != nil {
-		if Debug && err.Error() == "reference not found" {
+		if viper.GetBool(misc.DebugKey) && err.Error() == "reference not found" {
 			log.Printf("It looks like git pull process was interrupted before. Directory: %s", b.repoPath)
 		}
 		return err
@@ -190,13 +189,13 @@ func (b *BuiltInManager) Pull() error {
 	}
 	remotes, err := b.repo.Remotes()
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot get remotes of git repository %s. Error: %s", b.repoPath, err)
 		}
 		return err
 	}
 	if len(remotes) == 0 {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Got no remotes of git repository %s", b.repoPath)
 		}
 		return errors.New("no remotes")
@@ -262,7 +261,7 @@ func getFetchOptions(gitRef plumbing.ReferenceName, remote *git.Remote) (*git.Fe
 
 func (b *BuiltInManager) Clone() error {
 	var prog io.Writer = nil
-	if Debug {
+	if viper.GetBool(misc.DebugKey) {
 		prog = os.Stderr
 	}
 	var err error
@@ -282,7 +281,7 @@ func (b *BuiltInManager) Clone() error {
 func (b *BuiltInManager) initRemotes() error {
 	remotes, err := b.repo.Remotes()
 	if err != nil {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot get remotes of git repository %s. Error: %s", b.repoPath, err)
 		}
 		//Not critical
@@ -290,7 +289,7 @@ func (b *BuiltInManager) initRemotes() error {
 	}
 	//This should never happen
 	if len(remotes) == 0 {
-		if Debug {
+		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Got no remotes of git repository %s", b.repoPath)
 		}
 		//Not critical
