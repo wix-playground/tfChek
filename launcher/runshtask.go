@@ -114,7 +114,7 @@ func (rst *RunShTask) Done() error {
 		}
 		for ghi, ghm := range *gitManagers {
 			if viper.GetBool(misc.DebugKey) {
-				log.Printf("Processing GitHub manager %d of %d", ghi, len(*gitManagers))
+				log.Printf("Processing GitHub manager %d of %d", ghi+1, len(*gitManagers))
 			}
 			manager := github.GetManager(ghm.GetRemote())
 			if manager != nil {
