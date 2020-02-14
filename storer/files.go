@@ -2,10 +2,15 @@ package storer
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/spf13/viper"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"tfChek/misc"
 )
 
@@ -41,6 +46,10 @@ import (
 //	return nil
 //}
 
+func getTaskPath(dir string, id int) string {
+	return fmt.Sprintf("%s/task-%d", dir, id)
+}
+
 func GetTaskFileWriteCloser(id int) (io.WriteCloser, error) {
 	dir := viper.GetString(misc.OutDirKey)
 	_, err := os.Stat(dir)
@@ -50,11 +59,42 @@ func GetTaskFileWriteCloser(id int) (io.WriteCloser, error) {
 			log.Printf("Cannot create directory %s Error %s", dir, err)
 		}
 	}
-	file, err := os.Create(fmt.Sprintf("%s/task-%d", dir, id))
+	file, err := os.Create(getTaskPath(dir, id))
 	if err != nil {
 		log.Printf("Cannot create file task-%d Error %s", id, err)
 		return nil, err
 
 	}
 	return file, nil
+}
+
+func S3UploadTask(bucket string, id int) {
+	dir := viper.GetString(misc.OutDirKey)
+	filename := getTaskPath(dir, id)
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Println("S3UploadTask: Failed to open file", filename, err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	conf := aws.Config{
+		Region:      aws.String("us-east-1"),
+		Credentials: credentials.NewSharedCredentials("", "production_42"),
+	}
+	sess := session.New(&conf)
+	svc := s3manager.NewUploader(sess)
+
+	fmt.Println("Uploading file to S3...")
+	result, err := svc.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(filepath.Base(filename)),
+		Body:   file,
+	})
+	if err != nil {
+		fmt.Println("error", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Successfully uploaded %s to %s\n", filename, result.Location)
 }

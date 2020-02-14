@@ -36,6 +36,9 @@ const (
 	OAuthEndpoint      = "oauth_home_page"
 	OAuthAppName       = "oauth_app_name"
 	JWTSecret          = "jwt_secret"
+	S3BucketName       = "aws_s3_bucket_name"
+	AWSAccessKey       = "aws_access_key"
+	AWSSecretAccessKey = "aws_secret_access_key"
 )
 
 const (
