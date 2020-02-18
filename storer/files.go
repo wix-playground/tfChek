@@ -95,9 +95,8 @@ func S3UploadTask(bucket string, id int) {
 		Body:   file,
 	})
 	if err != nil {
-		fmt.Println("error", err)
-		os.Exit(1)
+		log.Println("error", err)
 	}
 
-	fmt.Printf("Successfully uploaded %s to %s\n", filename, result.Location)
+	log.Printf("Successfully uploaded %s to %s\n", filename, result.Location)
 }
