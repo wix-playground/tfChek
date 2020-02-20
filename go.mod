@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go v0.49.0 // indirect
 	github.com/DataDog/zstd v1.4.4 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+	github.com/aws/aws-sdk-go v1.29.0
 	github.com/go-pkgz/auth v0.9.0
 	github.com/google/go-github/v28 v28.1.1
 	github.com/gorilla/mux v1.7.3
@@ -21,7 +22,6 @@ require (
 	go.mongodb.org/mongo-driver v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413 // indirect
 	golang.org/x/image v0.0.0-20191214001246-9130b4cfad52 // indirect
-	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20191210023423-ac6580df4449 // indirect

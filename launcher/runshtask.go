@@ -458,6 +458,8 @@ func (rst *RunShTask) Run() error {
 		if err != nil {
 			log.Printf("Cannot change task state. Error: %s", err)
 		}
+		bucketName := viper.GetString(misc.S3BucketName)
+		storer.S3UploadTask(bucketName, rst.Id)
 		log.Println("Command completed successfully")
 	}
 	return err
