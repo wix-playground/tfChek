@@ -1,7 +1,11 @@
 ---
 #This is a new confgiuration file
+
+#Trun on Debug mode
 debug:  <%= databag_config('com.wixpress.system.tfchek','debug') %>
+# tfResDif timeout value in seconds
 timeout:  <%= databag_config('com.wixpress.system.tfchek','timeout') %>
+
 dismiss_out:  <%= databag_config('com.wixpress.system.tfchek','dismiss_out') %>
 run_dir:  <%= databag_config('com.wixpress.system.tfchek','run_dir') %>
 repo_owner: <%= databag_config('com.wixpress.system.tfchek','repo_owner') %>
@@ -16,4 +20,13 @@ github_cs: <%= databag_passwd('com.wixpress.system.tfchek','github_client_secret
 oauth_app_name: <%= databag_config('com.wixpress.system.tfchek','oauth_app_name')%>
 oauth_home_page: <%= databag_config('com.wixpress.system.tfchek','oauth_home_page')%>
 condom: <%= databag_config('com.wixpress.system.tfchek','condom')%>
+#S3 bucket settings to store output of run.sh executions
+#S3 bucket name
+aws_s3_bucket_name: <%= databag_config('com.wixpress.system.tfchek','s3_bucket_name')%>
+#S3 bucket region
+aws_region: <%= databag_config('com.wixpress.system.tfchek','s3_region')%>
+#Credentials to access S3 bucket
+aws_access_key: <%= databag_config('com.wixpress.system.tfchek','s3_access_key')%>
+aws_secret_access_key: <%= databag_config('com.wixpress.system.tfchek','s3_secret_key')%>
+
 

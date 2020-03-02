@@ -49,8 +49,8 @@ func config() {
 	viper.SetDefault(misc.JWTSecret, "secret")
 	viper.SetDefault(misc.S3BucketName, "wix-terraform-ci")
 	viper.SetDefault(misc.AWSRegion, "us-east-1")
-	viper.SetDefault(misc.AWSAccessKey, "aws_access_key")
-	viper.SetDefault(misc.AWSSecretAccessKey, "aws_secret_access_key")
+	viper.SetDefault(misc.AWSAccessKey, "")       //Configures your AWS access key
+	viper.SetDefault(misc.AWSSecretAccessKey, "") //Configures your AWS secret key
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)

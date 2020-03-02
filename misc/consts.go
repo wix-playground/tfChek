@@ -37,7 +37,7 @@ const (
 	OAuthAppName       = "oauth_app_name"
 	JWTSecret          = "jwt_secret"
 	S3BucketName       = "aws_s3_bucket_name"
-	AWSRegion          = "us-east-1"
+	AWSRegion          = "aws_region"
 	AWSAccessKey       = "aws_access_key"
 	AWSSecretAccessKey = "aws_secret_access_key"
 )
