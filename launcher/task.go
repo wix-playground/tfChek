@@ -119,7 +119,7 @@ type Task interface {
 	GetId() int
 	setId(id int)
 	GetStdOut() io.Reader
-	GetOut() string
+	GetCleanOut() string
 	GetStdErr() io.Reader
 	GetStdIn() io.Writer
 	GetStatus() TaskStatus

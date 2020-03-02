@@ -159,7 +159,7 @@ func process(m *Manager, prd *TaskResult) {
 //			log.Printf("Cannot obtain task %d",id)
 //			return misc.NOOUTPUT
 //		}
-//		out := t.GetOut()
+//		out := t.GetCleanOut()
 //		return out
 //	}
 //		log.Printf("Cannot parse branch name %s", branch)

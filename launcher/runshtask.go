@@ -119,7 +119,7 @@ func (rst *RunShTask) Done() error {
 			manager := github.GetManager(ghm.GetRemote())
 			if manager != nil {
 				c := manager.GetChannel()
-				o := rst.GetOut()
+				o := rst.GetCleanOut()
 				if o == "" {
 					o = misc.NOOUTPUT
 				}
@@ -146,7 +146,7 @@ func (rst *RunShTask) Fail() error {
 		manager := github.GetManager(fgm.GetRemote())
 		if manager != nil {
 			c := manager.GetChannel()
-			o := rst.GetOut()
+			o := rst.GetCleanOut()
 			if o == "" {
 				o = misc.NOOUTPUT
 			}
@@ -172,7 +172,7 @@ func (rst *RunShTask) TimeoutFail() error {
 		manager := github.GetManager(fgm.GetRemote())
 		if manager != nil {
 			c := manager.GetChannel()
-			o := rst.GetOut()
+			o := rst.GetCleanOut()
 			if o == "" {
 				o = misc.NOOUTPUT
 			}
@@ -185,7 +185,8 @@ func (rst *RunShTask) TimeoutFail() error {
 	}
 }
 
-func (rst *RunShTask) GetOut() string {
+//GetCleanOut function returns output without ANSI characters (Non colored out)
+func (rst *RunShTask) GetCleanOut() string {
 	cleanOut := stripansi.Strip(rst.sink.String())
 	return cleanOut
 }
