@@ -16,7 +16,7 @@ import (
 
 const providerName = "tfChek_custom_AWS_provider"
 
-func S3UploadTask(bucket string, id int) {
+func S3UploadTask(bucket string, id int) error {
 	dir := viper.GetString(misc.OutDirKey)
 	awsRegion := viper.GetString(misc.AWSRegion)
 	filename := getTaskPath(dir, id)
@@ -32,14 +32,14 @@ func S3UploadTask(bucket string, id int) {
 		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Could not obtain AWS credentials provider. Error: %s", err)
 		}
+		return err
 	}
 	if viper.GetBool(misc.DebugKey) {
 		log.Printf("obtained AWS credentials provider")
 	}
 	creds := credentials.NewCredentials(credentialsProvider)
 	conf := aws.Config{
-		Region: aws.String(awsRegion),
-		//Credentials: credentials.NewSharedCredentials("", "production_42"),
+		Region:      aws.String(awsRegion),
 		Credentials: creds,
 	}
 	sess := session.New(&conf)
@@ -53,10 +53,15 @@ func S3UploadTask(bucket string, id int) {
 		Body:   file,
 	})
 	if err != nil {
-		log.Println("error", err)
+		if viper.GetBool(misc.DebugKey) {
+			log.Printf("Cannot upload to S3. Error: %s", err)
+		}
+		return err
 	}
-
-	log.Printf("Successfully uploaded %s to %s\n", filename, result.Location)
+	if viper.GetBool(misc.DebugKey) {
+		log.Printf("Successfully uploaded %s to %s\n", filename, result.Location)
+	}
+	return nil
 }
 
 func getCredentialsProvider() (credentials.Provider, error) {
@@ -66,7 +71,7 @@ func getCredentialsProvider() (credentials.Provider, error) {
 	if len(ak) == 0 {
 		return nil, errors.New("AWS access key was not configured")
 	}
-	sk := viper.GetString(misc.AWSSecretAccessKey)
+	sk := viper.GetString(misc.AWSSecretKey)
 	if len(sk) == 0 {
 		return nil, errors.New("AWS secret key was not configured")
 	}

@@ -460,8 +460,20 @@ func (rst *RunShTask) Run() error {
 			log.Printf("Cannot change task state. Error: %s", err)
 		}
 		bucketName := viper.GetString(misc.S3BucketName)
-		storer.S3UploadTask(bucketName, rst.Id)
-		log.Println("Command completed successfully")
+		err = storer.S3UploadTask(bucketName, rst.Id)
+		if err != nil {
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Failed to upload output of the task %d Error: %s", rst.Id, err)
+			}
+		} else {
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Output of the task %d has been successfully stored at S3 bucket", rst.Id)
+			}
+		}
+		if viper.GetBool(misc.DebugKey) {
+			log.Println("Command completed successfully for task %d", rst.Id)
+		}
+		err = nil
 	}
 	return err
 }
