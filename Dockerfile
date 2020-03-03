@@ -38,6 +38,6 @@ USER deployer
 EXPOSE 8085
 
 # Command to run the executable
-#CMD ["./tfChek"]
-ENTRYPOINT [ "./tfChek.sh" ]
+CMD ["./tfChek"]
+#ENTRYPOINT [ "./tfChek.sh" ]
 
