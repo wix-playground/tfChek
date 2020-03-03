@@ -24,10 +24,26 @@ func LogConfig() {
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", RunDirKey, viper.GetString(RunDirKey)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", AvatarDir, viper.GetString(AvatarDir)))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", GitHubClientId, viper.GetString(GitHubClientId)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", GitHubClientSecret, maskPass(viper.GetString(GitHubClientSecret))))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", OAuthAppName, viper.GetString(OAuthAppName)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", JWTSecret, maskPass(viper.GetString(JWTSecret))))
 	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", OAuthEndpoint, viper.GetString(OAuthEndpoint)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", Fuse, viper.GetString(Fuse)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", S3BucketName, viper.GetString(S3BucketName)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", AWSRegion, viper.GetString(S3BucketName)))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", AWSAccessKey, maskPass(viper.GetString(AWSAccessKey))))
+	builder.WriteString(fmt.Sprintf("\t%s: %v;\n", AWSSecretKey, maskPass(viper.GetString(AWSSecretKey))))
 
 	if viper.GetBool(DebugKey) {
 		log.Printf(builder.String())
 	}
+}
+
+func maskPass(pass string) string {
+	var container []byte = make([]byte, len(pass)*len("*"))
+	bp := 0
+	for i := 0; i < len(pass); i++ {
+		bp += copy(container[bp:], "*")
+	}
+	return string(container)
 }
