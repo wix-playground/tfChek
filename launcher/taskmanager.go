@@ -224,7 +224,7 @@ func (tm *TaskManagerImpl) Launch(bt Task) error {
 			}
 			return nil
 		}
-		return errors.New("cannot launch task in not open status")
+		return errors.New("cannot launch task in not scheduled status")
 	}
 	if tm.threads[bt.SyncName()] == nil {
 		tm.lock.Lock()
