@@ -230,12 +230,6 @@ func (rst *RunShTask) GetStdIn() io.Writer {
 	return rst.in
 }
 
-func convertToSSHGitUrl(url string) string {
-	//TODO: implement this
-	//TODO: write test here
-	return url
-}
-
 func (rst *RunShTask) prepareGit() error {
 	//create RUNSH_APTH here for launching run.sh
 
