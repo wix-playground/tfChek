@@ -2,11 +2,6 @@
 
 TFCHEK_PORT=$PORT
 export TFCHEK_PORT
-if [ -r "/configs/tfChek" ]; then
-  source /configs/tfChek
-  echo "Environment variables has been sourced" 1>&2
-else
-  echo "WARNING!!! Environment variables has not been sourced" 1>&2
-fi
+echo -e "\033[0;32mConfigured tfChek to listen to the port\033[0;35m $TFCHEK_PORT\033[0m"
 echo "Launching $*" 1>&2
 ./tfChek "$@"

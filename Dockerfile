@@ -38,6 +38,6 @@ USER deployer
 EXPOSE 8085
 
 # Command to run the executable
-CMD ["./tfChek"]
-#ENTRYPOINT [ "./tfChek.sh" ]
+# I have to use enrtypoint to re-export PORT to TFCHEK_PORT variable
+ENTRYPOINT [ "./tfChek.sh" ]
 
