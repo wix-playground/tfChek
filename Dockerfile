@@ -21,7 +21,10 @@ FROM bash:5
 WORKDIR /application
 LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
 RUN apk --no-cache add ca-certificates
-#RUN mkdir /configs && chown 5500 /configs
+#Temporary workaround to fix broken GitHub Authentication
+RUN apk add openssh
+RUN apk add git
+
 
 #Add user
 RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500 deployer
