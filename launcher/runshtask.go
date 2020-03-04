@@ -287,8 +287,7 @@ func (rst *RunShTask) getGitManagers() (*[]git.Manager, error) {
 	} else {
 		var managers []git.Manager
 		for _, gurl := range rst.GitOrigins {
-			sshurl := convertToSSHGitUrl(gurl)
-			gitman, err := git.GetManager(sshurl, rst.StateLock)
+			gitman, err := git.GetManager(gurl, rst.StateLock)
 			if err != nil {
 				return nil, err
 			}
