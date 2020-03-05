@@ -13,5 +13,8 @@ echo -e "\033[0;32mOK\033[0m SSH keys are present\033[0m"
 eval "$(ssh-agent)" && echo -e "\033[0;32mOK\033[0m SSH agent has been started\033[0m" || echo -e "\033[0;31mERROR\033[0m Cannot start ssh agent"
 ssh-add && echo -e "\033[0;32mOK\033[0m SSH key has been added to the SSH Agent\033[0m" || echo -e "\033[0;31mERROR\033[0m Cannot add SSH key to the agent"
 
+#Export USER variable for run.sh
+export USER=$(whoami)
+
 echo "Launching $*" 1>&2
 ./tfChek "$@"

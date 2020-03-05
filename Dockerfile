@@ -33,6 +33,18 @@ COPY github_know_hosts /home/deployer/.ssh/known_hosts
 RUN chown -R deployer:deployer /home/deployer/.ssh
 RUN apk add git
 
+#Install ruby
+RUN apk add gnupg
+RUN apk add curl
+#Very harmful line this must be somehow overcome. There should not be any compillers in the docker container
+#TODO: Fix this. Remove compillers
+RUN apk add build-base
+RUN       gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB && \
+          curl -sSL https://get.rvm.io | bash -s stable && \
+          source ~/.rvm/scripts/rvm && \
+          rvm install 2.6.5 && \
+          rvm --default use 2.6.5
+
 
 #Copy files
 COPY --from=0 /build/tfChek .
@@ -42,6 +54,15 @@ COPY --from=0 /build/static static
 RUN chown -R deployer:deployer * && mkdir /var/tfChek && chown -R deployer:deployer /var/tfChek && mkdir /var/run/tfChek && chown -R deployer:deployer /var/run/tfChek
 #Switch user
 USER deployer
+
+#Install ruby to the userspace
+RUN       gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB && \
+          curl -sSL https://get.rvm.io | bash -s stable && \
+          source ~/.rvm/scripts/rvm && \
+          rvm install 2.6.5 && \
+          rvm --default use 2.6.5
+
+
 # Expose port 8080 to the outside world
 EXPOSE 8085
 
