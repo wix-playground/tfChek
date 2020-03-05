@@ -134,7 +134,7 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 		fo, _ := getFetchOptions(branch, b.remote)
 		err = b.repo.Fetch(fo)
 		if err != nil {
-			log.Printf("Cannot fetch remoteUrl references. Error: %s", err)
+			log.Printf("Checkout failed. Cannot fetch remoteUrl references. Error: %s", err)
 			if err.Error() != "already up-to-date" {
 				return err
 			}
@@ -211,7 +211,7 @@ func (b *BuiltInManager) Pull() error {
 	fo, _ := getFetchOptions(gitRef.Name(), b.remote)
 	err = b.repo.Fetch(fo)
 	if err == nil {
-		log.Printf("Cannot fetch remoteUrl references. Error: %s", err)
+		log.Printf("Pull failed. Cannot fetch remoteUrl references. Error: %s", err)
 		if err.Error() != "already up-to-date" {
 			return err
 		}
@@ -219,7 +219,7 @@ func (b *BuiltInManager) Pull() error {
 	}
 	err = gwt.Pull(&git.PullOptions{RemoteName: b.remote.Config().Name, ReferenceName: gitRef.Name(), SingleBranch: true})
 	if err != nil && err.Error() != "already up-to-date" {
-		log.Printf("Cannot fetch remoteUrl references. Error: %s", err)
+		log.Printf("Pull failed. Cannot pull remoteUrl references. Error: %s", err)
 		if err.Error() != "already up-to-date" {
 			return err
 		}
