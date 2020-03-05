@@ -1,0 +1,9 @@
+#NOTE: Ideally this file should not exist
+Host github.com
+    User git
+    ControlMaster no
+    CanonicalizeHostname no
+    Compression no
+    ServerAliveInterval 0
+    Port 22
+    StrictHostKeyChecking no

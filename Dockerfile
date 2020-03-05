@@ -22,12 +22,16 @@ WORKDIR /application
 LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
 RUN apk --no-cache add ca-certificates
 
-#Temporary workaround to fix broken GitHub Authentication
-RUN apk add openssh
-RUN apk add git
-
 #Add user
 RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500 deployer
+
+#Temporary workaround to fix broken GitHub Authentication
+RUN apk add openssh
+RUN mkdir /home/deployer/.ssh && chmod 700 /home/deployer/.ssh
+COPY ssh_config /home/deployer/.ssh/config
+RUN chown -R deployer:deployer /home/deployer/.ssh
+RUN apk add git
+
 
 #Copy files
 COPY --from=0 /build/tfChek .
