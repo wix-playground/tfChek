@@ -320,10 +320,10 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 			branchName := strings.ReplaceAll(pushPayload.Ref, "refs/heads/", "")
 			matched, err := regexp.Match("^"+misc.TaskPrefix+"[0-9]+", []byte(branchName))
 			if err != nil {
-				log.Printf("Cannot match against regex")
+				log.Printf("Cannot match branch name %s against regex", branchName)
 			}
 			if matched {
-				log.Printf("I have to process this event")
+				misc.Debug("This event is eligible for further processing")
 				chunks := strings.Split(branchName, "-")
 				taskId, err := strconv.Atoi(chunks[1])
 				if err != nil {
@@ -351,16 +351,6 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 					}
 
 					if gaTask, ok := task.(launcher.GitHubAwareTask); ok {
-						//TODO: handle different git repositories
-
-						//gitMan, err := git.GetManager(pushPayload.Repository.GitURL, task.SyncName())
-
-						//Looks like I have to prepare git manager much earlier
-						//gitMan, err := git.GetManager(pushPayload.Repository.SSHURL, task.SyncName())
-						//if err != nil {
-						//	log.Printf("Cannot get Git manager")
-						//}
-						//gaTask.SetGitManager(gitMan)
 						authors := fetch_authors(&pushPayload)
 						gaTask.SetAuthors(*authors)
 					}
