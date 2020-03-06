@@ -23,8 +23,7 @@ LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
 RUN apk --no-cache add ca-certificates
 
 #Add user
-#NOTE: Using of /usr/local/bin/bash specially to support builtin function during the RVM sourcing
-RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500 -s /usr/local/bin/bash deployer
+RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500 deployer
 
 #Temporary workaround to fix broken GitHub Authentication
 RUN apk add openssh
@@ -35,26 +34,7 @@ RUN chown -R deployer:deployer /home/deployer/.ssh
 RUN apk add git
 
 #Install ruby
-RUN apk add gnupg
-RUN apk add curl
-RUN apk add tar
-#Very harmful line this must be somehow overcome. There should not be any compillers in the docker container
-#TODO: Fix this. Remove compillers
-RUN apk add musl
-RUN apk add build-base
-#Install ruby to the userspace
-USER deployer
-RUN       whoami && id && which bash && ps aux && echo "$$" && \
-          gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB && \
-          curl -sSL https://get.rvm.io | bash -s stable && \
-          head -n 12 /home/deployer/.rvm/scripts/rvm && \
-          bash -c 'source /home/deployer/.rvm/scripts/rvm && rvm install 2.6.5 && rvm --default use 2.6.5'
-#          RUN       su deployer -c 'gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB'
-#          RUN       su deployer -c '   curl -sSL https://get.rvm.io | bash -s stable '
-#          RUN       su deployer -c '   source ~/.rvm/scripts/rvm '
-#          RUN       su deployer -c '   rvm install 2.6.5 '
-#          RUN       su deployer -c '   rvm --default use 2.6.5'
-USER root
+RUN apk add ruby-dev
 
 #Copy files
 COPY --from=0 /build/tfChek .

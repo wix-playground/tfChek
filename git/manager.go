@@ -134,6 +134,8 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 		fo, _ := getFetchOptions(branch, b.remote)
 		misc.Debug(fmt.Sprintf("Trying to fetch branch %s form repo %s", branch, b.remote.String()))
 		err = b.repo.Fetch(fo)
+		//TODO: Add as a workaround exponential backoff with timeout here
+		//TODO: Better solution is to prepare repositories when corresponding webhook come (idea: use map of channels for notification )
 		if err != nil {
 			log.Printf("Checkout failed. Cannot fetch remoteUrl references from branch %s of repo %s. Error: %s", branch, b.remoteUrl, err)
 			if err.Error() != "already up-to-date" {
