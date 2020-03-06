@@ -59,7 +59,7 @@ func (rc *RunSHLaunchConfig) GetHashedCommand(hash string) (*RunShCmd, error) {
 
 func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 	var cmd RunShCmd
-	location := rc.CommandOptions.Location
+	location := strings.TrimSpace(rc.CommandOptions.Location)
 	if location == "" {
 		return nil, errors.New("given location cannot be empty")
 	}
