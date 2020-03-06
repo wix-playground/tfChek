@@ -63,7 +63,7 @@ func (c *ClientRunSH) CreateIssue(branch string, assignees *[]string) (*int, err
 		a := *assignees
 		newIssue.Assignee = &a[0]
 		//This does not work
-		newIssue.Assignees = assignees
+		//newIssue.Assignees = assignees
 	}
 	issue, _, err := c.client.Issues.Create(c.context, c.Owner, c.Repository, newIssue)
 	if err != nil {
