@@ -139,14 +139,17 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 			err = b.repo.Fetch(fo)
 			//TODO: Better solution is to prepare repositories when corresponding webhook come (idea: use map of channels for notification )
 			if err != nil {
+				if err.Error() == "already up-to-date" {
+					misc.Debug(fmt.Sprintf("Branch %s of repo %s is already up to date", branch, b.remoteUrl))
+				}
 				log.Printf("Checkout failed. Cannot fetch remoteUrl references from branch %s of repo %s. Error: %s", branch, b.remoteUrl, err)
 				delay := 1 << i
 				log.Printf("Attempt %d from %d failed. Cooldown %d seconds", i+1, attempts, delay)
 				time.Sleep(time.Duration(delay) * time.Second)
 			}
-			if err.Error() != "already up-to-date" {
-				return err
-			}
+		}
+		if err != nil && err.Error() != "already up-to-date" {
+			return err
 		}
 		err = worktree.Checkout(&git.CheckoutOptions{Branch: branch})
 		if err != nil {
