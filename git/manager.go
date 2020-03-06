@@ -141,6 +141,7 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 			if err != nil {
 				if err.Error() == "already up-to-date" {
 					misc.Debug(fmt.Sprintf("Branch %s of repo %s is already up to date", branch, b.remoteUrl))
+					break
 				}
 				log.Printf("Checkout failed. Cannot fetch remoteUrl references from branch %s of repo %s. Error: %s", branch, b.remoteUrl, err)
 				delay := 1 << i
