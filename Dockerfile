@@ -35,6 +35,9 @@ RUN apk add git
 
 #Install ruby
 RUN apk add ruby-dev
+RUN gem install bundler colorize  zip netaddr -v 2.0.4
+#Graphvis need building tools
+RUN apk add build-base && gem install graphviz json &&apk del build-base
 
 #Copy files
 COPY --from=0 /build/tfChek .
