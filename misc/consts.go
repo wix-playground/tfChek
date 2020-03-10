@@ -14,6 +14,8 @@ const (
 	WdKey              = "WORKING_DIRECTORY"
 	EnvVarsKey         = "ENVIRONMENT_VARIABLES"
 	RunShPathEnvVar    = "RUNSH_PATH"
+	AwsAccessKeyVar    = "AWS_ACCESS_KEY_ID"
+	AwsSecretKeyVar    = "AWS_SECRET_ACCESS_KEY"
 	NotifyTfChekEnvVar = "NOTIFY_TFCHEK"
 	OutDirKey          = "out_dir"
 	DebugKey           = "debug"
