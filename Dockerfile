@@ -35,7 +35,8 @@ RUN apk add git
 
 #Install ruby
 RUN apk add ruby-dev
-RUN gem install bundler colorize  zip netaddr -v 2.0.4
+RUN gem install  netaddr -v 2.0.4
+RUN gem install bundler colorize  zip
 #Graphvis need building tools
 RUN apk add build-base && gem install graphviz json &&apk del build-base
 
