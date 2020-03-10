@@ -406,11 +406,13 @@ func (rst *RunShTask) Run() error {
 	//Disable tfChek notification to avoid recursion
 	sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.NotifyTfChekEnvVar, "false"))
 
+	//This is disabled by now, because there are multiple credentials for different AWS resources
 	//Add AWS credentials for terraform
-	if viper.GetString(misc.AWSAccessKey) != "" && viper.GetString(misc.AWSSecretKey) != "" {
-		sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.AwsAccessKeyVar, viper.GetString(misc.AWSAccessKey)))
-		sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.AwsSecretKeyVar, viper.GetString(misc.AWSSecretKey)))
-	}
+	//if viper.GetString(misc.AWSAccessKey) != "" && viper.GetString(misc.AWSSecretKey) != "" {
+	//	sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.AwsAccessKeyVar, viper.GetString(misc.AWSAccessKey)))
+	//	sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.AwsSecretKeyVar, viper.GetString(misc.AWSSecretKey)))
+	//}
+
 	logTaskEnv(rst.Id, &sysenv)
 
 	//Save command execution output
