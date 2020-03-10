@@ -59,6 +59,7 @@ USER deployer
 # Expose port 8080 to the outside world
 EXPOSE 8085
 
+
 # Command to run the executable
 # I have to use enrtypoint to re-export PORT to TFCHEK_PORT variable
 ENTRYPOINT [ "./tfChek.sh" ]
