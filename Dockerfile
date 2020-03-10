@@ -37,10 +37,9 @@ RUN apk add git
 RUN apk add ruby-dev
 RUN gem install bundler -v 2.1.4
 RUN gem install  netaddr -v 2.0.4
-RUN gem install process-group -v 1.1.0
 RUN gem install colorize  zip
 #Graphvis need building tools
-RUN apk add build-base && gem install json -v 2.2.0 && gem install graphviz -v 1.1.0 &&a pk del build-base
+RUN apk add build-base && gem install json -v 2.2.0 && gem install process-group -v 1.1.0 && gem install graphviz -v 1.1.0 &&apk del build-base
 #Install bash dependencies
 RUN apk add ncurses curl
 
