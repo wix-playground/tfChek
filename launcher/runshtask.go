@@ -335,6 +335,18 @@ func (rst *RunShTask) prepareGitHub() error {
 	return nil
 }
 
+func logTaskEnv(tid int, env *[]string) {
+	if viper.GetBool(misc.DebugKey) {
+		var builder strings.Builder
+		builder.Grow(50)
+		fmt.Fprintf(&builder, "Task id: %d enjvironment:\n", tid)
+		for i, s := range *env {
+			fmt.Fprintf(&builder, "\t#%d\t%s\n", i, s)
+		}
+		misc.Debug(builder.String())
+	}
+}
+
 func (rst *RunShTask) Run() error {
 	if rst.Status != misc.SCHEDULED {
 		return errors.New("cannot run unscheduled task")
@@ -394,7 +406,7 @@ func (rst *RunShTask) Run() error {
 	//Disable tfChek notification to avoid recursion
 	sysenv = append(sysenv, fmt.Sprintf("%s=%s", misc.NotifyTfChekEnvVar, "false"))
 
-	log.Printf("Task id: %d environment: %s", rst.Id, sysenv)
+	logTaskEnv(rst.Id, &sysenv)
 
 	//Save command execution output
 

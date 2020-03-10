@@ -216,16 +216,6 @@ func RunShPost(w http.ResponseWriter, r *http.Request) {
 
 }
 
-////Deprecated
-//func RunShEnv(w http.ResponseWriter, r *http.Request) {
-//	v := mux.Vars(r)
-//	env := v["Env"]
-//	layer := ""
-//	envVars := make(map[string]string)
-//	envVars["TFRESDIF_NOPB"] = "true"
-//	getRunsh(w, r, env, layer, time.Duration(viper.GetInt(misc.TimeoutKey))*time.Second, &envVars)
-//}
-
 func Cancel(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
 	vars := mux.Vars(r)
@@ -272,16 +262,6 @@ func Cancel(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(202)
 }
-
-//Deprecated
-//func RunShEnvLayer(w http.ResponseWriter, r *http.Request) {
-//	v := mux.Vars(r)
-//	env := v["Env"]
-//	layer := v["Layer"]
-//	envVars := make(map[string]string)
-//	envVars["TFRESDIF_NOPB"] = "true"
-//	getRunsh(w, r, env, layer, time.Duration(viper.GetInt(misc.TimeoutKey))*time.Second, &envVars)
-//}
 
 func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
