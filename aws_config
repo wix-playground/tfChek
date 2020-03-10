@@ -1,0 +1,27 @@
+[default]
+region=us-east-1
+output=json
+[profile production_42]
+region=us-east-1
+output=json
+[profile staging]
+region=us-west-1
+output=json
+[profile production_tbd]
+region=eu-west-1
+output=json
+[profile production_84]
+region=eu-west-1
+output=json
+[profile production_208]
+region=ap-northeast-2
+output=json
+[profile production_96]
+region=us-west-1
+output=json
+[profile stage_0]
+region=us-east-1
+output=json
+[profile production_202]
+region = us-east-1
+output = json

@@ -33,6 +33,10 @@ COPY github_know_hosts /home/deployer/.ssh/known_hosts
 RUN chown -R deployer:deployer /home/deployer/.ssh
 RUN apk add git
 
+#Configure AWS access for terraform
+RUN mkdir /home/deployer/.aws && chown deployer:deployer /home/deployer/.aws
+COPY --chown=deployer:deployer aws_config ~/.aws/config
+
 #Install ruby
 RUN apk add ruby-dev
 RUN gem install bundler -v 2.1.4
@@ -44,10 +48,10 @@ RUN apk add build-base && gem install json -v 2.2.0 && gem install process-group
 RUN apk add ncurses curl zip
 
 #Copy files
-COPY --from=0 /build/tfChek .
-COPY --from=0 /build/tfChek.sh .
-COPY --from=0 /build/templates /templates
-COPY --from=0 /build/static static
+COPY  --chown=deployer:deployer --from=0 /build/tfChek .
+COPY  --chown=deployer:deployer --from=0 /build/tfChek.sh .
+COPY  --chown=deployer:deployer --from=0 /build/templates /templates
+COPY  --chown=deployer:deployer --from=0 /build/static static
 RUN chown -R deployer:deployer * && mkdir /var/tfChek && chown -R deployer:deployer /var/tfChek && mkdir /var/run/tfChek && chown -R deployer:deployer /var/run/tfChek
 #Switch user
 USER deployer
