@@ -39,6 +39,8 @@ RUN gem install  netaddr -v 2.0.4
 RUN gem install bundler colorize  zip
 #Graphvis need building tools
 RUN apk add build-base && gem install graphviz json &&apk del build-base
+#Install bash dependencies
+RUN apk add ncurses curl
 
 #Copy files
 COPY --from=0 /build/tfChek .
