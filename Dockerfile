@@ -35,7 +35,7 @@ RUN apk add git
 
 #Configure AWS access for terraform
 RUN mkdir /home/deployer/.aws && chown deployer:deployer /home/deployer/.aws
-COPY --chown=deployer:deployer aws_config ~/.aws/config
+COPY --chown=deployer:deployer aws_config /home/deployer/.aws/config
 
 #Install ruby
 RUN apk add ruby-dev
