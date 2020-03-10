@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#Export needed vars
+NASA_TOKEN="<%= databag_passwd('com.wixpress.system.tfchek','NASA_TOKEN') %>"
+TFRESDIF_NOPB="true"
+NOTIFY_TFCHEK="false"
+
+export NASA_TOKEN TFRESDIF_NOPB NOTIFY_TFCHEK
+
+#Export USER variable for run.sh
+export USER=$(whoami)
