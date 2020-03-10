@@ -41,7 +41,7 @@ RUN gem install colorize  zip
 #Graphvis need building tools
 RUN apk add build-base && gem install json -v 2.2.0 && gem install process-group -v 1.1.0 && gem install graphviz -v 1.1.0 &&apk del build-base
 #Install bash dependencies
-RUN apk add ncurses curl
+RUN apk add ncurses curl zip
 
 #Copy files
 COPY --from=0 /build/tfChek .
