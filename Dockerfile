@@ -28,6 +28,7 @@ RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500
 #Temporary workaround to fix broken GitHub Authentication
 RUN apk add openssh
 RUN mkdir /home/deployer/.ssh && chmod 700 /home/deployer/.ssh
+RUN mkdir /home/deployer/.chef && chmod 770 /home/deployer/.chef
 COPY ssh_config /home/deployer/.ssh/config
 COPY github_know_hosts /home/deployer/.ssh/known_hosts
 RUN chown -R deployer:deployer /home/deployer/.ssh
