@@ -119,12 +119,16 @@ func process(m *Manager, prd *TaskResult) {
 			//if err != nil {
 			//	log.Printf("Cannot review PR %d Error: %s", number, err)
 			//}
-			message := fmt.Sprintf("Automatically merged by tfChek (Authors %v)", *prd.authors)
-			sha, err := m.client.Merge(*number, message)
-			if err != nil {
-				log.Printf("Cannot merge branch %s, Error: %s", branch, err)
+			if viper.GetBool(misc.Fuse) {
+				log.Printf("Automatic merging of branch %s is disabled due to %s option set to true", branch, misc.Fuse)
 			} else {
-				log.Printf("Branch %s has been merged. Merge commit hash %s", branch, *sha)
+				message := fmt.Sprintf("Automatically merged by tfChek (Authors %v)", *prd.authors)
+				sha, err := m.client.Merge(*number, message)
+				if err != nil {
+					log.Printf("Cannot merge branch %s, Error: %s", branch, err)
+				} else {
+					log.Printf("Branch %s has been merged. Merge commit hash %s", branch, *sha)
+				}
 			}
 		}
 	case false:
