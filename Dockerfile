@@ -29,14 +29,14 @@ RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500
 RUN apk add openssh
 RUN mkdir /home/deployer/.ssh && chmod 700 /home/deployer/.ssh
 RUN mkdir /home/deployer/.chef && chmod 770 /home/deployer/.chef
-COPY ssh_config /home/deployer/.ssh/config
-COPY github_know_hosts /home/deployer/.ssh/known_hosts
+COPY luggage/ssh_config /home/deployer/.ssh/config
+COPY luggage/github_know_hosts /home/deployer/.ssh/known_hosts
 RUN chown -R deployer:deployer /home/deployer/.ssh
 RUN apk add git
 
 #Configure AWS access for terraform
 RUN mkdir /home/deployer/.aws && chown deployer:deployer /home/deployer/.aws
-COPY --chown=deployer:deployer aws_config /home/deployer/.aws/config
+COPY --chown=deployer:deployer luggage/aws_config /home/deployer/.aws/config
 
 #Install ruby
 RUN apk add ruby-dev
@@ -48,9 +48,15 @@ RUN apk add build-base && gem install json -v 2.2.0 && gem install process-group
 #Install bash dependencies
 RUN apk add ncurses curl zip
 
+#Temporary layer (DELETE AFTER OCTOBER 2020)
+#Add key for star wixpress until 2020 certificate key
+RUN mkdir /home/deployer/luggage && chown deployer:deployer /home/deployer/luggage
+COPY  --chown=deployer:deployer /luggage/star_wixpress_com_until_2020.* /home/deployer/luggage/
+#End of temporary layer (DELETE AFTER OCTOBER 2020)
+
 #Copy files
 COPY  --chown=deployer:deployer --from=0 /build/tfChek .
-COPY  --chown=deployer:deployer --from=0 /build/tfChek.sh .
+COPY  --chown=deployer:deployer --from=0 /build/luggage/tfChek.sh .
 COPY  --chown=deployer:deployer --from=0 /build/templates /templates
 COPY  --chown=deployer:deployer --from=0 /build/static static
 RUN chown -R deployer:deployer * && mkdir /var/tfChek && chown -R deployer:deployer /var/tfChek && mkdir /var/run/tfChek && chown -R deployer:deployer /var/run/tfChek

@@ -19,6 +19,11 @@ chown $(whoami) ~/.chef/validation.pem ~/.chef/data_bag_secret
 chmod 400 ~/.chef/validation.pem ~/.chef/data_bag_secret
 echo -e "\033[0;32mOK\033[0m Chef keys are present\033[0m"
 
+#As a temporary measure add start wixress key and certificates
+cp /configs/swp_key_t2020 ~/luggage/star_wixpress_com_until_2020.key
+chmod 400 ~/luggage/star_wixpress_com_until_2020.key
+[ -r ~/luggage/star_wixpress_com_until_2020.key ] &&  echo -e "\033[0;32mOK\033[0m star wixpress certificate key is present \033[0m" || echo -e "\033[0;31mERROR\033[0m star wixpress certificate key is missing"
+
 #Prepare AWS credentials
 cp /configs/aws_credentials ~/.aws/credentials && chmod 400 ~/.aws/credentials
 
