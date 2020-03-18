@@ -20,23 +20,24 @@ import (
 )
 
 type RunShTask struct {
-	Name       string
-	Id         int
-	Command    string
-	Args       []string
-	ExtraEnv   map[string]string
-	StateLock  string
-	Context    context.Context
-	Status     TaskStatus
-	Socket     chan *websocket.Conn
-	out, err   io.Reader
-	in         io.Writer
-	inR        io.ReadCloser
-	outW, errW io.WriteCloser
-	save       bool
-	GitOrigins []string
-	sink       bytes.Buffer
-	authors    []string
+	Name        string
+	Id          int
+	Command     string
+	Args        []string
+	ExtraEnv    map[string]string
+	StateLock   string
+	Context     context.Context
+	Status      TaskStatus
+	Socket      chan *websocket.Conn
+	out, err    io.Reader
+	in          io.Writer
+	inR         io.ReadCloser
+	outW, errW  io.WriteCloser
+	save        bool
+	GitOrigins  []string
+	sink        bytes.Buffer
+	authors     []string
+	subscribers []chan TaskStatus
 }
 
 /**
@@ -203,6 +204,38 @@ func (rst *RunShTask) SetStatus(status TaskStatus) {
 	rst.Status = status
 }
 
+func (rst *RunShTask) Subscribe() chan TaskStatus {
+	sts := make(chan TaskStatus)
+	sts <- rst.Status
+	//Add channel to subscribers if the task is active
+	if !IsCompleted(rst) {
+		rst.subscribers = append(rst.subscribers, sts)
+	}
+	return sts
+}
+
+func IsCompleted(t Task) bool {
+
+	if t.GetStatus() == misc.DONE || t.GetStatus() == misc.FAILED || t.GetStatus() == misc.TIMEOUT {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (rst *RunShTask) notifySubscribers() {
+	for _, sc := range rst.subscribers {
+		sc <- rst.Status
+		//Let the reader do this
+		//if rst.Status == misc.DONE || rst.Status == misc.FAILED || rst.Status == misc.TIMEOUT {
+		//	close(sc)
+		//}
+	}
+	//Remove all subscribers after notification that task is completed
+	if IsCompleted(rst) {
+		rst.subscribers = nil
+	}
+}
 func (rst *RunShTask) GetId() int {
 	return rst.Id
 }

@@ -118,6 +118,7 @@ type Task interface {
 	Run() error
 	GetId() int
 	setId(id int)
+	Subscribe() chan TaskStatus
 	GetStdOut() io.Reader
 	GetCleanOut() string
 	GetStdErr() io.Reader
