@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/viper"
 	"io"
-	"log"
 	"os"
 	"tfChek/misc"
 	"tfChek/storer"
@@ -37,6 +35,7 @@ func NewFollower(file string) Follower {
 	}
 	err = watcher.Add(file)
 	if err != nil {
+		misc.Debug(err.Error())
 		return nil
 	}
 	_, err = os.Stat(file)
@@ -63,7 +62,7 @@ func GetTaskLineReader(taskId int) (chan string, error) {
 	tm := GetTaskManager()
 	task := tm.Get(taskId)
 	if task == nil {
-		msg := fmt.Sprint("Cannot find a task by id: %d", taskId)
+		msg := fmt.Sprintf("Cannot find a task by id: %d", taskId)
 		misc.Debug(msg)
 		return nil, errors.New(msg)
 	}
@@ -109,7 +108,9 @@ func (f *follower) Follow(lines chan<- string, errs chan<- error) {
 	for {
 		s, err := reader.ReadBytes('\n')
 		counter += len(s)
-		lines <- string(s)
+		if counter > 0 {
+			lines <- string(s)
+		}
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -118,16 +119,24 @@ func (f *follower) Follow(lines chan<- string, errs chan<- error) {
 			}
 		}
 	}
+	defer close(f.control)
+	//for  range f.control {
+	//	//Do nothing
+	//}
+
+	defer close(lines)
+	defer close(errs)
 	for {
 		select {
 		case err := <-f.watcher.Errors:
-			misc.Debugf("watching file error: %s", err)
-			errs <- err
-
+			if err != nil {
+				misc.Debugf("watching file error: %s", err)
+				errs <- err
+			}
 		case evt, ok := <-f.watcher.Events:
 			if !ok {
 				misc.Debugf("Watcher channel for file %s is closed. Stop watching", f.filePath)
-				break
+				return
 			}
 			switch evt.Op {
 			case fsnotify.Write:
@@ -140,7 +149,7 @@ func (f *follower) Follow(lines chan<- string, errs chan<- error) {
 					}
 				}
 			default:
-				misc.Debug(fmt.Sprint("File watcher received event: %s - %s", evt.Name, evt.String()))
+				misc.Debug(fmt.Sprintf("File watcher received event: %s - %s", evt.Name, evt.String()))
 
 			}
 
@@ -149,13 +158,7 @@ func (f *follower) Follow(lines chan<- string, errs chan<- error) {
 				misc.Debugf("Control channel for file %s follower has been closed", f.filePath)
 			}
 			if signal == stop {
-				close(f.control)
-				//for  range f.control {
-				//	//Do nothing
-				//}
 
-				close(lines)
-				close(errs)
 				err := f.watcher.Close()
 				if err != nil {
 					misc.Debugf("Cannot close watcher for file %s", f.filePath)
@@ -164,6 +167,7 @@ func (f *follower) Follow(lines chan<- string, errs chan<- error) {
 				if err != nil {
 					misc.Debugf("Cannot close file %s", f.filePath)
 				}
+				return
 			}
 		}
 	}
@@ -171,5 +175,4 @@ func (f *follower) Follow(lines chan<- string, errs chan<- error) {
 
 func (f *follower) Stop() {
 	f.control <- stop
-	close(f.control)
 }

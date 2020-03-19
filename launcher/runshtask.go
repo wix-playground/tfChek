@@ -316,7 +316,7 @@ func (rst *RunShTask) prepareGit() error {
 
 func (rst *RunShTask) getGitManagers() (*[]git.Manager, error) {
 	if len(rst.GitOrigins) == 0 {
-		return nil, errors.New(fmt.Sprintf("Cannot obtain a git manager. Task id %d contains no git remotes"))
+		return nil, errors.New(fmt.Sprintf("Cannot obtain a git manager. Task id %d contains no git remotes", rst.Id))
 	} else {
 		var managers []git.Manager
 		for _, gurl := range rst.GitOrigins {
@@ -516,7 +516,7 @@ func (rst *RunShTask) Run() error {
 			}
 		}
 		if viper.GetBool(misc.DebugKey) {
-			log.Println("Command completed successfully for task %d", rst.Id)
+			log.Printf("Command completed successfully for task %d", rst.Id)
 		}
 		err = nil
 	}
