@@ -35,7 +35,9 @@ func GetTaskLineReader(taskId int) (chan string, error) {
 				if !ok {
 					misc.Debugf("---logging errors of file %s watcher:")
 					for lm := range errs {
-						misc.Debug(lm.Error())
+						if lm != nil {
+							misc.Debug(lm.Error())
+						}
 					}
 					misc.Debug("---")
 					return
@@ -48,7 +50,10 @@ func GetTaskLineReader(taskId int) (chan string, error) {
 				case misc.DONE:
 					misc.Debug("task is over")
 					follower.Stop()
+					close(output)
 					return
+				default:
+					misc.Debugf("received task status change event %s", GetStatusString(status))
 				}
 			}
 		}

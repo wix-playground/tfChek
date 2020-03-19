@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -68,16 +67,16 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 	if err != nil {
 		return nil, err
 	}
-	outPipeReader, outPipeWriter := io.Pipe()
-	errPipeReader, errPipeWriter := io.Pipe()
-	inPipeReader, inPipeWriter := io.Pipe()
+	//outPipeReader, outPipeWriter := io.Pipe()
+	//errPipeReader, errPipeWriter := io.Pipe()
+	//inPipeReader, inPipeWriter := io.Pipe()
 
 	t := RunShTask{Command: command, Args: args, Context: ctx,
 		Status: misc.OPEN, save: tm.saveRuns,
 		Socket:    make(chan *websocket.Conn),
 		StateLock: fmt.Sprintf("%s/%s", rcs.Env, rcs.Layer),
-		out:       outPipeReader, err: errPipeReader, in: inPipeWriter,
-		outW: outPipeWriter, errW: errPipeWriter, inR: inPipeReader,
+		//out:       outPipeReader, err: errPipeReader, in: inPipeWriter,
+		//outW: outPipeWriter, errW: errPipeWriter, inR: inPipeReader,
 		//Perhaps it is better ot transfer Git Origins via the context
 		GitOrigins: rcs.GitOrigins,
 	}

@@ -20,19 +20,19 @@ import (
 )
 
 type RunShTask struct {
-	Name        string
-	Id          int
-	Command     string
-	Args        []string
-	ExtraEnv    map[string]string
-	StateLock   string
-	Context     context.Context
-	Status      TaskStatus
-	Socket      chan *websocket.Conn
-	out, err    io.Reader
-	in          io.Writer
-	inR         io.ReadCloser
-	outW, errW  io.WriteCloser
+	Name      string
+	Id        int
+	Command   string
+	Args      []string
+	ExtraEnv  map[string]string
+	StateLock string
+	Context   context.Context
+	Status    TaskStatus
+	Socket    chan *websocket.Conn
+	//out, err    io.Reader
+	//in          io.Writer
+	//inR         io.ReadCloser
+	//outW, errW  io.WriteCloser
 	save        bool
 	GitOrigins  []string
 	sink        bytes.Buffer
@@ -77,6 +77,7 @@ func (rst *RunShTask) GetExtraEnv() *map[string]string {
 func (rst *RunShTask) Register() error {
 	if rst.Status == misc.OPEN {
 		rst.Status = misc.REGISTERED
+		rst.notifySubscribers()
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled registered, beacuse it is not open. Please make get request. Current state number is %d", rst.Status)}
@@ -86,6 +87,7 @@ func (rst *RunShTask) Register() error {
 func (rst *RunShTask) Schedule() error {
 	if rst.Status == misc.REGISTERED {
 		rst.Status = misc.SCHEDULED
+		rst.notifySubscribers()
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be scheduled because it has been not registered. Please wait for a webhook. Current state number is %d", rst.Status)}
@@ -98,6 +100,7 @@ func (rst *RunShTask) Start() error {
 			log.Printf("Start of task %s", rst.Name)
 		}
 		rst.Status = misc.STARTED
+		rst.notifySubscribers()
 		return nil
 	} else {
 		return &StateError{msg: fmt.Sprintf("Task cannot be Started because it is not in scheduled state. Current state number is %d", rst.Status)}
@@ -106,6 +109,7 @@ func (rst *RunShTask) Start() error {
 func (rst *RunShTask) Done() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.DONE
+		rst.notifySubscribers()
 		gitManagers, err := rst.getGitManagers()
 		if err != nil {
 			if viper.GetBool(misc.DebugKey) {
@@ -137,6 +141,7 @@ func (rst *RunShTask) Done() error {
 func (rst *RunShTask) Fail() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.FAILED
+		rst.notifySubscribers()
 		fgm, err := rst.getFirstGitManager()
 		if err != nil {
 			if viper.GetBool(misc.DebugKey) {
@@ -163,6 +168,7 @@ func (rst *RunShTask) Fail() error {
 func (rst *RunShTask) TimeoutFail() error {
 	if rst.Status == misc.STARTED {
 		rst.Status = misc.TIMEOUT
+		rst.notifySubscribers()
 		fgm, err := rst.getFirstGitManager()
 		if err != nil {
 			if viper.GetBool(misc.DebugKey) {
@@ -194,6 +200,7 @@ func (rst *RunShTask) GetCleanOut() string {
 
 func (rst *RunShTask) ForceFail() {
 	rst.Status = misc.FAILED
+	rst.notifySubscribers()
 }
 
 func (rst *RunShTask) GetStatus() TaskStatus {
@@ -205,7 +212,7 @@ func (rst *RunShTask) SetStatus(status TaskStatus) {
 }
 
 func (rst *RunShTask) Subscribe() chan TaskStatus {
-	sts := make(chan TaskStatus)
+	sts := make(chan TaskStatus, 2)
 	sts <- rst.Status
 	//Add channel to subscribers if the task is active
 	if !IsCompleted(rst) {
@@ -251,16 +258,19 @@ func (rst *RunShTask) SyncName() string {
 	return rst.Command
 }
 
+//Deprecated
 func (rst *RunShTask) GetStdOut() io.Reader {
-	return rst.out
+	return &rst.sink
 }
 
+//Deprecated
 func (rst *RunShTask) GetStdErr() io.Reader {
-	return rst.err
+	return &rst.sink
 }
 
+//Deprecated
 func (rst *RunShTask) GetStdIn() io.Writer {
-	return rst.in
+	return nil
 }
 
 func (rst *RunShTask) prepareGit() error {
@@ -397,9 +407,9 @@ func (rst *RunShTask) Run() error {
 		rst.ForceFail()
 		return err
 	}
-	defer rst.outW.Close()
-	defer rst.errW.Close()
-	defer rst.inR.Close()
+	//defer rst.outW.Close()
+	//defer rst.errW.Close()
+	//defer rst.inR.Close()
 	//Get working directory
 	gitman, err := rst.getFirstGitManager()
 	if err != nil {
@@ -450,14 +460,14 @@ func (rst *RunShTask) Run() error {
 
 	//Save command execution output
 
-	mw := io.MultiWriter(rst.outW, &rst.sink)
+	//mw := io.MultiWriter(rst.outW, &rst.sink)
 
 	log.Printf("Running command '%s %s' and waiting for it to finish...", rst.Command, strings.Join(rst.Args, " "))
 	command := exec.CommandContext(rst.Context, rst.Command, rst.Args...)
 	command.Dir = cwd
 	command.Env = sysenv
-	command.Stdout = mw
-	command.Stderr = mw
+	command.Stdout = &rst.sink
+	command.Stderr = &rst.sink
 	//command.Stdin = rst.inR
 	command.Stdin = nil
 	//Ugly but I did not found a better place
@@ -466,8 +476,8 @@ func (rst *RunShTask) Run() error {
 		if err != nil {
 			log.Printf("Save to file for task %d is disabled. Error: %s", rst.Id, err)
 		} else {
-			ow := io.MultiWriter(mw, out)
-			eow := io.MultiWriter(mw, out)
+			ow := io.MultiWriter(command.Stdout, out)
+			eow := io.MultiWriter(command.Stderr, out)
 			command.Stdout = ow
 			command.Stderr = eow
 		}
@@ -475,7 +485,7 @@ func (rst *RunShTask) Run() error {
 
 	//I will write nothing to the command
 	//So closing stdin immediately
-	err = rst.inR.Close()
+	//err = rst.inR.Close()
 	if err != nil {
 		log.Printf("Cannot close stdin for task id: %d", rst.Id)
 	}
