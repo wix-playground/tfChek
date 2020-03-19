@@ -1,4 +1,4 @@
-package launcher
+package storer
 
 import (
 	"fmt"
