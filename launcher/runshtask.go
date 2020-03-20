@@ -29,10 +29,14 @@ type RunShTask struct {
 	Context   context.Context
 	Status    TaskStatus
 	Socket    chan *websocket.Conn
+	//These are not needed anymore here.
 	//out, err    io.Reader
 	//in          io.Writer
 	//inR         io.ReadCloser
 	//outW, errW  io.WriteCloser
+
+	//This should be always on
+	//Remove this field in the future
 	save        bool
 	GitOrigins  []string
 	sink        bytes.Buffer

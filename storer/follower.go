@@ -25,30 +25,30 @@ type follower struct {
 	control  chan controlFlag
 }
 
-func NewFollower(file string) Follower {
+func NewFollower(file string) (Follower, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		misc.Debug(err.Error())
-		return nil
+		return nil, err
 	}
 	err = watcher.Add(file)
 	if err != nil {
 		misc.Debug(err.Error())
-		return nil
+		return nil, err
 	}
 	_, err = os.Stat(file)
 	if os.IsNotExist(err) {
 		misc.Debug(fmt.Sprintf("file %s does not exist. Error: %s", file, err.Error()))
-		return nil
+		return nil, err
 	}
 	f, err := os.Open(file)
 	if err != nil {
 		misc.Debugf("Cannot open file %s to obtain reader. Error: %s", file, err)
-		return nil
+		return nil, err
 	}
 	cc := make(chan controlFlag)
 	follower := follower{watcher: watcher, reader: f, filePath: file, control: cc}
-	return &follower
+	return &follower, nil
 }
 
 func (f *follower) Follow(lines chan<- string, errs chan<- error) {

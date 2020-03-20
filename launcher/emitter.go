@@ -23,12 +23,9 @@ func GetTaskLineReader(taskId int) (chan string, error) {
 	tsc := task.Subscribe()
 	output := make(chan string)
 	errs := make(chan error)
-	follower := storer.NewFollower(fPath)
-	if follower == nil {
-		return nil, errors.New(fmt.Sprintf("Cannot create follower for file %s", fPath))
-	}
-	go follower.Follow(output, errs)
+
 	go func() {
+		var follower storer.Follower = nil
 		for {
 			select {
 			case status, ok := <-tsc:
@@ -43,14 +40,24 @@ func GetTaskLineReader(taskId int) (chan string, error) {
 					return
 				}
 				switch status {
+				case misc.STARTED:
+					//Create follower only when output log file are actually created
+					follower, err := storer.NewFollower(fPath)
+					if err != nil {
+						errs <- errors.New(fmt.Sprintf("Cannot create follower for file %s Error: %s", fPath, err))
+					}
+					go follower.Follow(output, errs)
 				case misc.TIMEOUT:
 					fallthrough
 				case misc.FAILED:
 					fallthrough
 				case misc.DONE:
 					misc.Debug("task is over")
-					follower.Stop()
-					close(output)
+					if follower != nil {
+						follower.Stop()
+					}
+					//Remove this
+					//close(output)
 					return
 				default:
 					misc.Debugf("received task status change event %s", GetStatusString(status))
