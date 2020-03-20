@@ -45,8 +45,10 @@ func GetTaskLineReader(taskId int) (chan string, error) {
 					follower, err := storer.NewFollower(fPath)
 					if err != nil {
 						errs <- errors.New(fmt.Sprintf("Cannot create follower for file %s Error: %s", fPath, err))
+					} else {
+						misc.Debugf("Starting follwer of task %d", taskId)
+						go follower.Follow(output, errs)
 					}
-					go follower.Follow(output, errs)
 				case misc.TIMEOUT:
 					fallthrough
 				case misc.FAILED:

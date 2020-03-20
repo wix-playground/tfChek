@@ -89,12 +89,16 @@ func (f *follower) Follow(lines chan<- string, errs chan<- error) {
 			}
 			switch evt.Op {
 			case fsnotify.Write:
-				s, err := reader.ReadBytes('\n')
-				counter += len(s)
-				lines <- string(s)
-				if err != nil {
-					if err != io.EOF {
-						errs <- err
+				for {
+					s, err := reader.ReadBytes('\n')
+					counter += len(s)
+					lines <- string(s)
+					if err != nil {
+						if err == io.EOF {
+							break
+						} else {
+							errs <- err
+						}
 					}
 				}
 			default:
