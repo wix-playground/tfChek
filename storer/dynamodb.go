@@ -68,27 +68,27 @@ func createSequenceTable(name string) error {
 		TableName: aws.String(name),
 	}
 
-	result, err := svc.CreateTable(input)
+	_, err = svc.CreateTable(input)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case dynamodb.ErrCodeResourceInUseException:
-				fmt.Println(dynamodb.ErrCodeResourceInUseException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeResourceInUseException, aerr.Error()))
 			case dynamodb.ErrCodeLimitExceededException:
-				fmt.Println(dynamodb.ErrCodeLimitExceededException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeLimitExceededException, aerr.Error()))
 			case dynamodb.ErrCodeInternalServerError:
-				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeInternalServerError, aerr.Error()))
 			default:
-				fmt.Println(aerr.Error())
+				misc.Debug(fmt.Sprint(aerr.Error()))
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			misc.Debug(fmt.Sprint(err.Error()))
 		}
 		return err
 	}
-	fmt.Println(result)
+	//misc.Debug(fmt.Sprint(result))
 	err = svc.WaitUntilTableExists(&dynamodb.DescribeTableInput{TableName: aws.String(name)})
 	if err != nil {
 		misc.Debugf("Failed to wait until table exists. Error: %s", err)
@@ -110,30 +110,30 @@ func deleteSequenceTable(name string) error {
 	input := &dynamodb.DeleteTableInput{
 		TableName: aws.String(name),
 	}
-	result, err := svc.DeleteTable(input)
+	_, err = svc.DeleteTable(input)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case dynamodb.ErrCodeResourceInUseException:
-				fmt.Println(dynamodb.ErrCodeResourceInUseException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeResourceInUseException, aerr.Error()))
 			case dynamodb.ErrCodeResourceNotFoundException:
-				fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeResourceNotFoundException, aerr.Error()))
 			case dynamodb.ErrCodeLimitExceededException:
-				fmt.Println(dynamodb.ErrCodeLimitExceededException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeLimitExceededException, aerr.Error()))
 			case dynamodb.ErrCodeInternalServerError:
-				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeInternalServerError, aerr.Error()))
 			default:
-				fmt.Println(aerr.Error())
+				misc.Debug(fmt.Sprint(aerr.Error()))
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			misc.Debug(fmt.Sprint(err.Error()))
 		}
 		return err
 	}
 
-	fmt.Println(result)
+	//misc.Debug(fmt.Sprint(result))
 	err = svc.WaitUntilTableNotExists(&dynamodb.DescribeTableInput{TableName: aws.String(name)})
 	if err != nil {
 		misc.Debugf("Failed to wait until table does not exist. Error: %s", err)
@@ -159,18 +159,18 @@ func listSequenceTable(name string) (bool, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case dynamodb.ErrCodeInternalServerError:
-				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeInternalServerError, aerr.Error()))
 			default:
-				fmt.Println(aerr.Error())
+				misc.Debug(fmt.Sprint(aerr.Error()))
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			misc.Debug(fmt.Sprint(err.Error()))
 		}
 		return false, err
 	}
-	fmt.Println(result)
+	//misc.Debug(fmt.Sprint(result))
 	var found bool = false
 	for _, i := range result.TableNames {
 		if *i == name {
@@ -200,6 +200,11 @@ func checkSequenceTable(name string) error {
 	return nil
 }
 
+func UpdateSequence(seq int) error {
+	tableName := viper.GetString(misc.AWSSequenceTable)
+	return updateSequence(seq, tableName)
+}
+
 func updateSequence(seq int, name string) error {
 	s, err := getSession()
 	if err != nil {
@@ -215,37 +220,42 @@ func updateSequence(seq int, name string) error {
 		TableName:              aws.String(name),
 	}
 
-	result, err := svc.PutItem(input)
+	_, err = svc.PutItem(input)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case dynamodb.ErrCodeConditionalCheckFailedException:
-				fmt.Println(dynamodb.ErrCodeConditionalCheckFailedException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeConditionalCheckFailedException, aerr.Error()))
 			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error()))
 			case dynamodb.ErrCodeResourceNotFoundException:
-				fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeResourceNotFoundException, aerr.Error()))
 			case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
-				fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error()))
 			case dynamodb.ErrCodeTransactionConflictException:
-				fmt.Println(dynamodb.ErrCodeTransactionConflictException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeTransactionConflictException, aerr.Error()))
 			case dynamodb.ErrCodeRequestLimitExceeded:
-				fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error()))
 			case dynamodb.ErrCodeInternalServerError:
-				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeInternalServerError, aerr.Error()))
 			default:
-				fmt.Println(aerr.Error())
+				misc.Debug(fmt.Sprint(aerr.Error()))
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			misc.Debug(fmt.Sprint(err.Error()))
 		}
 		return err
 	}
 
-	fmt.Println(result)
+	//misc.Debug(fmt.Sprint(result))
 	return nil
+}
+
+func GetSequence() (int, error) {
+	tableName := viper.GetString(misc.AWSSequenceTable)
+	return getSequence(tableName)
 }
 
 func getSequence(name string) (int, error) {
@@ -269,24 +279,24 @@ func getSequence(name string) (int, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error()))
 			case dynamodb.ErrCodeResourceNotFoundException:
-				fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeResourceNotFoundException, aerr.Error()))
 			case dynamodb.ErrCodeRequestLimitExceeded:
-				fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error()))
 			case dynamodb.ErrCodeInternalServerError:
-				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+				misc.Debug(fmt.Sprint(dynamodb.ErrCodeInternalServerError, aerr.Error()))
 			default:
-				fmt.Println(aerr.Error())
+				misc.Debug(fmt.Sprint(aerr.Error()))
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			misc.Debug(fmt.Sprint(err.Error()))
 		}
 		return -1, err
 	}
-	fmt.Println(result)
+	//misc.Debug(fmt.Sprint(result))
 	seqItem, ok := result.Item[SEQUENCEKEY]
 	if ok {
 		v := *seqItem.N
