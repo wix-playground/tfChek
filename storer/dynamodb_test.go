@@ -9,6 +9,7 @@ import (
 func Test_createSequenceTable(t *testing.T) {
 	type args struct {
 		name string
+		wait bool
 	}
 	viper.SetDefault(misc.AWSSequenceTable, "tfChek-sequence-test")
 	viper.SetDefault(misc.AWSRegion, "us-east-1")
@@ -18,13 +19,13 @@ func Test_createSequenceTable(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "Create table test",
-			args:    args{name: "tfChek-sequence-test"},
+			args:    args{name: "tfChek-sequence-test", wait: true},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := createSequenceTable(tt.args.name); (err != nil) != tt.wantErr {
+			if err := createSequenceTable(tt.args.name, tt.args.wait); (err != nil) != tt.wantErr {
 				t.Errorf("createSequenceTable() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

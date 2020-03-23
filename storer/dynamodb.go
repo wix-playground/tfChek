@@ -18,9 +18,9 @@ const (
 	SEQUENCENAME    = "tfChek-global"
 )
 
-func CreateSequenceTable() error {
+func CreateSequenceTable(wait bool) error {
 	tableName := viper.GetString(misc.AWSSequenceTable)
-	return createSequenceTable(tableName)
+	return createSequenceTable(tableName, wait)
 }
 
 func getSession() (*session.Session, error) {
@@ -33,7 +33,7 @@ func getSession() (*session.Session, error) {
 	return s, nil
 }
 
-func createSequenceTable(name string) error {
+func createSequenceTable(name string, wait bool) error {
 	s, err := getSession()
 	if err != nil {
 		return err
@@ -192,7 +192,7 @@ func checkSequenceTable(name string) error {
 		return err
 	}
 	if !exists {
-		err := createSequenceTable(name)
+		err := createSequenceTable(name, false)
 		if err != nil {
 			return err
 		}

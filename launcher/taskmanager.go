@@ -13,11 +13,12 @@ import (
 	"strconv"
 	"sync"
 	"tfChek/misc"
+	"tfChek/storer"
 	"time"
 )
 
 var tm TaskManager
-var tml sync.Mutex
+var tml, al sync.Mutex
 
 type TaskManager interface {
 	Close() error
@@ -101,9 +102,14 @@ func (tm *TaskManagerImpl) Add(t Task) error {
 		}
 		return errors.New("cannot add nil task")
 	}
+	//Sequence should be unique. So synchronizing is required now
+	al.Lock()
+	//Simple increment is not enough now. Need to update common value each time
+	tm.sequence = readSequence()
 	tm.sequence++
 	t.setId(tm.sequence)
 	writeSequence(tm.sequence)
+	al.Unlock()
 	tm.tasks[t.GetId()] = t
 	return nil
 }
@@ -147,6 +153,26 @@ func GetTaskManager() TaskManager {
 }
 
 func readSequence() int {
+	if viper.GetBool(misc.UseExternalSequence) {
+		sequence, err := storer.GetSequence()
+		if err != nil {
+			if err.Error() == "Requested resource not found" {
+				err := storer.EnsureSequenceTable()
+				if err != nil {
+					misc.Debug(err.Error())
+				}
+			}
+			misc.Debugf("Cannot get external sequence. Error: %s. Falling back to the local one.", err)
+			return readSequenceFromFile()
+		} else {
+			return sequence
+		}
+	} else {
+		return readSequenceFromFile()
+	}
+}
+
+func readSequenceFromFile() int {
 	rd := viper.GetString(misc.RunDirKey)
 	if _, err := os.Stat(rd); os.IsNotExist(err) {
 		log.Printf("Run directory %s does not exist. Creating one", rd)
@@ -178,6 +204,17 @@ func readSequence() int {
 }
 
 func writeSequence(i int) {
+	if viper.GetBool(misc.UseExternalSequence) {
+		err := storer.UpdateSequence(i)
+		if err != nil {
+			misc.Debug(err.Error())
+		}
+	}
+	writeSequence2file(i)
+
+}
+
+func writeSequence2file(i int) {
 	rundir := viper.GetString(misc.RunDirKey)
 	if _, err := os.Stat(rundir); os.IsNotExist(err) {
 		err := os.MkdirAll(rundir, 0755)
