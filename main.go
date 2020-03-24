@@ -138,6 +138,7 @@ func showVersion() {
 }
 
 func main() {
+	misc.Debug(fmt.Sprintf("Weocome to tfChek v%d.%d.%d :)", MajorVersion, MinorVersion, Revision))
 	initialize()
 	defer launcher.GetTaskManager().Close()
 	defer github.CloseAll()

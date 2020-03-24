@@ -110,10 +110,11 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 		select {
 		case line, ok := <-lineReader:
 			if ok {
-				err = ws.WriteMessage(websocket.TextMessage, []byte(line))
-				if err != nil {
-					log.Printf("Cannot write to websocket. Error: %s", err)
-				}
+				_ = ws.WriteMessage(websocket.TextMessage, []byte(line))
+				//TODO: improve this spamming logging
+				//if err != nil {
+				//	misc.Debugf("Cannot write to websocket. Error: %s", err)
+				//}
 			} else {
 				return
 			}
