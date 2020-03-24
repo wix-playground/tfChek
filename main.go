@@ -124,6 +124,7 @@ func initialize() {
 		showVersion()
 		os.Exit(0)
 	}
+	misc.Debug(fmt.Sprintf("Weocome to tfChek v%d.%d.%d :)", MajorVersion, MinorVersion, Revision))
 	if viper.GetBool(misc.DebugKey) {
 		misc.LogConfig()
 	}
@@ -138,7 +139,6 @@ func showVersion() {
 }
 
 func main() {
-	misc.Debug(fmt.Sprintf("Weocome to tfChek v%d.%d.%d :)", MajorVersion, MinorVersion, Revision))
 	initialize()
 	defer launcher.GetTaskManager().Close()
 	defer github.CloseAll()
