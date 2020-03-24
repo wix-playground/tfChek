@@ -7,6 +7,7 @@ require (
 	github.com/DataDog/zstd v1.4.4 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/aws/aws-sdk-go v1.29.0
+	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-pkgz/auth v0.9.0
 	github.com/google/go-github/v28 v28.1.1
 	github.com/gorilla/mux v1.7.3

@@ -94,36 +94,61 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("Client connected to run.sh Env websocket")
-
-	errc := make(chan error)
-	err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
+	lineReader, err := launcher.GetTaskLineReader(bt.GetId())
 	if err != nil {
-		log.Println(err)
+		erm := fmt.Sprintf("Cannot get line reader from the . Error: %s", err)
+		log.Println(erm)
+		w.WriteHeader(500)
+		w.Header().Add("Reason", erm)
+		_, err := w.Write([]byte(erm))
+		if err != nil {
+			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
+		}
+		return
 	}
-	lock := &sync.Mutex{}
-	wg := &sync.WaitGroup{}
-	wg.Add(2)
-	go writeToWS(bt.GetStdOut(), ws, errc, lock, wg)
-	go writeToWS(bt.GetStdErr(), ws, errc, lock, wg)
-	go func(ws *websocket.Conn, errc <-chan error) {
-		e := <-errc
-		if e != nil {
-			err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s Error: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()), e)))
-			if err != nil {
-				log.Println(err)
-			}
-		} else {
-			err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
-			if err != nil {
-				log.Println(err)
+	for {
+		select {
+		case line, ok := <-lineReader:
+			if ok {
+				err = ws.WriteMessage(websocket.TextMessage, []byte(line))
+				if err != nil {
+					log.Printf("Cannot write to websocket. Error: %s", err)
+				}
+			} else {
+				return
 			}
 		}
-
-	}(ws, errc)
-	wg.Wait()
-	close(errc)
+	}
+	//errc := make(chan error)
+	//err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
+	//if err != nil {
+	//	log.Println(err)
+	//}
+	//lock := &sync.Mutex{}
+	//wg := &sync.WaitGroup{}
+	//wg.Add(2)
+	//go writeToWS(bt.GetStdOut(), ws, errc, lock, wg)
+	//go writeToWS(bt.GetStdErr(), ws, errc, lock, wg)
+	//go func(ws *websocket.Conn, errc <-chan error) {
+	//	e := <-errc
+	//	if e != nil {
+	//		err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s Error: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()), e)))
+	//		if err != nil {
+	//			log.Println(err)
+	//		}
+	//	} else {
+	//		err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
+	//		if err != nil {
+	//			log.Println(err)
+	//		}
+	//	}
+	//
+	//}(ws, errc)
+	//wg.Wait()
+	//close(errc)
 }
 
+//Depreacted
 func writeToWS(in io.Reader, ws *websocket.Conn, errc chan<- error, lock *sync.Mutex, wg *sync.WaitGroup) {
 	bufRdr := bufio.NewReader(in)
 	for {
