@@ -519,6 +519,9 @@ func (rst *RunShTask) Run() error {
 		if err != nil {
 			log.Printf("Cannot change task state. Error: %s", err)
 		}
+		if viper.GetBool(misc.DebugKey) {
+			log.Printf("Command completed successfully for task %d", rst.Id)
+		}
 	}
 	upload2s3(rst.Id, rst.Status)
 	return err
@@ -536,8 +539,5 @@ func upload2s3(id int, status TaskStatus) {
 		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Output of the task %d has been successfully stored at S3 bucket", id)
 		}
-	}
-	if viper.GetBool(misc.DebugKey) {
-		log.Printf("Command completed successfully for task %d", id)
 	}
 }
