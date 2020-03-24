@@ -116,6 +116,20 @@ func (f *follower) Follow(lines chan<- string, errs chan<- error) {
 				if err != nil {
 					misc.Debugf("Cannot close watcher for file %s", f.filePath)
 				}
+				//Read till the end
+				for {
+					s, err := reader.ReadBytes('\n')
+					counter += len(s)
+					lines <- string(s)
+					if err != nil {
+						if err == io.EOF {
+							break
+						} else {
+							errs <- err
+						}
+					}
+				}
+
 				err = f.reader.Close()
 				if err != nil {
 					misc.Debugf("Cannot close file %s", f.filePath)

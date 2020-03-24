@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
+	"os"
 	"tfChek/api"
 	"tfChek/github"
 	"tfChek/launcher"
@@ -16,7 +17,7 @@ import (
 
 const (
 	MajorVersion = 0
-	MinorVersion = 5
+	MinorVersion = 7
 	Revision     = 0
 )
 
@@ -52,6 +53,8 @@ func config() {
 	viper.SetDefault(misc.AWSRegion, "us-east-1")
 	viper.SetDefault(misc.AWSAccessKey, "") //Configures your AWS access key
 	viper.SetDefault(misc.AWSSecretKey, "") //Configures your AWS secret key
+	viper.SetDefault(misc.AWSSequenceTable, "tfChek-sequence")
+	viper.SetDefault(misc.UseExternalSequence, "true")
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)
@@ -117,7 +120,10 @@ func setupRoutes() *mux.Router {
 func initialize() {
 	//Prepare configuration
 	config()
-
+	if viper.GetBool(misc.VersionKey) {
+		showVersion()
+		os.Exit(0)
+	}
 	if viper.GetBool(misc.DebugKey) {
 		misc.LogConfig()
 	}

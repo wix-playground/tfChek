@@ -498,6 +498,7 @@ func (rst *RunShTask) Run() error {
 	if err != nil {
 		log.Printf("Cannot change task state. Error: %s", err)
 	}
+
 	err = command.Run()
 	if err != nil {
 		if err.Error() == "context deadline exceeded" {
@@ -518,21 +519,25 @@ func (rst *RunShTask) Run() error {
 		if err != nil {
 			log.Printf("Cannot change task state. Error: %s", err)
 		}
-		bucketName := viper.GetString(misc.S3BucketName)
-		err = storer.S3UploadTask(bucketName, rst.Id)
-		if err != nil {
-			if viper.GetBool(misc.DebugKey) {
-				log.Printf("Failed to upload output of the task %d Error: %s", rst.Id, err)
-			}
-		} else {
-			if viper.GetBool(misc.DebugKey) {
-				log.Printf("Output of the task %d has been successfully stored at S3 bucket", rst.Id)
-			}
-		}
 		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Command completed successfully for task %d", rst.Id)
 		}
-		err = nil
 	}
+	upload2s3(rst.Id, rst.Status)
 	return err
+}
+
+func upload2s3(id int, status TaskStatus) {
+	bucketName := viper.GetString(misc.S3BucketName)
+	suffix := GetStatusString(status)
+	err := storer.S3UploadTaskWithSuffix(bucketName, id, &suffix)
+	if err != nil {
+		if viper.GetBool(misc.DebugKey) {
+			log.Printf("Failed to upload output of the task %d Error: %s", id, err)
+		}
+	} else {
+		if viper.GetBool(misc.DebugKey) {
+			log.Printf("Output of the task %d has been successfully stored at S3 bucket", id)
+		}
+	}
 }

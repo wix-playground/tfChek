@@ -16,7 +16,11 @@ import (
 
 const providerName = "tfChek_custom_AWS_provider"
 
-func S3UploadTask(bucket string, id int) error {
+func S3UploadTask(bucket string, id int, suffix *string) error {
+	return S3UploadTaskWithSuffix(bucket, id, nil)
+}
+
+func S3UploadTaskWithSuffix(bucket string, id int, suffix *string) error {
 	dir := viper.GetString(misc.OutDirKey)
 	awsRegion := viper.GetString(misc.AWSRegion)
 	filename := getTaskPath(dir, id)
@@ -47,9 +51,13 @@ func S3UploadTask(bucket string, id int) error {
 	if viper.GetBool(misc.DebugKey) {
 		fmt.Println("Uploading file to S3")
 	}
+	key := filepath.Base(filename)
+	if suffix != nil {
+		key = fmt.Sprintf("%s-%s", key, *suffix)
+	}
 	result, err := svc.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(bucket),
-		Key:    aws.String(filepath.Base(filename)),
+		Key:    aws.String(key),
 		Body:   file,
 	})
 	if err != nil {
