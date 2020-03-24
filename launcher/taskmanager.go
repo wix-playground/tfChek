@@ -156,13 +156,18 @@ func readSequence() int {
 	if viper.GetBool(misc.UseExternalSequence) {
 		sequence, err := storer.GetSequence()
 		if err != nil {
-			if err.Error() == "Requested resource not found" {
+			emsg := err.Error()
+			if emsg == "ResourceNotFoundException: Requested resource not found" {
+				misc.Debug("Looks like there is no external sequence storage. I am going to create it now...")
 				err := storer.EnsureSequenceTable()
 				if err != nil {
 					misc.Debug(err.Error())
+				} else {
+					misc.Debug("External sequence storage has been successfully created")
 				}
+			} else {
+				misc.Debugf("Cannot get external sequence. Error: %s. Falling back to the local one.", err)
 			}
-			misc.Debugf("Cannot get external sequence. Error: %s. Falling back to the local one.", err)
 			return readSequenceFromFile()
 		} else {
 			return sequence
