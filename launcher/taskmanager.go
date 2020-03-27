@@ -204,7 +204,7 @@ func readSequenceFromFile() int {
 		log.Printf("Cannot convert sequence %s form file %s Error: %s", seqBytes, rdf, err)
 		return 0
 	}
-	log.Printf("Starting server from task counter value %d", seq)
+	log.Printf("Task counter value %d", seq)
 	return seq
 }
 

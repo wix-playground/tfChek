@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
-	"os"
 	"tfChek/api"
 	"tfChek/github"
 	"tfChek/launcher"
@@ -18,7 +17,7 @@ import (
 const (
 	MajorVersion = 0
 	MinorVersion = 7
-	Revision     = 0
+	Revision     = 1
 )
 
 func config() {
