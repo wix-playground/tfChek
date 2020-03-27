@@ -1,8 +1,11 @@
 package launcher
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"tfChek/misc"
 	"tfChek/storer"
 )
@@ -68,4 +71,27 @@ func GetTaskLineReader(taskId int) (chan string, error) {
 		}
 	}()
 	return output, nil
+}
+
+func GetCompletedTaskOutput(taskId int) ([]string, error) {
+	data, err := storer.ReadTask(taskId)
+	if err != nil {
+		misc.Debugf("Failed to get task %d output. Error: %s", taskId, err)
+		return nil, err
+	}
+	br := bytes.NewReader(data)
+	bbr := bufio.NewReader(br)
+	var lines []string
+	for {
+		l, err := bbr.ReadString('\n')
+		if err != nil {
+			if err != io.EOF {
+				misc.Debugf("Failed to read from buffer. Error %s", err)
+				return lines, err
+			}
+			break
+		}
+		lines = append(lines, l)
+	}
+	return lines, nil
 }

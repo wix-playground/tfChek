@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,14 +8,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"tfChek/launcher"
 	"tfChek/misc"
 	"time"
@@ -64,11 +61,16 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 	bt := tm.Get(taskId)
 	if bt == nil {
+		//Try to search for a completed tasks
+		err := writeCompletedTassToWS(w, r, taskId)
+		if err == nil {
+			return
+		}
 		erm := fmt.Sprintf("Cannot find task by id: %d", taskId)
 		log.Println(erm)
 		w.Header().Add("Reason", erm)
 		w.WriteHeader(404)
-		_, err := w.Write([]byte(erm))
+		_, err = w.Write([]byte(erm))
 		if err != nil {
 			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
 		}
@@ -78,22 +80,19 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 		//}
 		return
 	}
-	upgrader.CheckOrigin = func(r *http.Request) bool {
-		return true
-	}
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		erm := fmt.Sprintf("Cannot upgrade connection to use websocket. Error: %s", err)
-		log.Println(erm)
-		w.WriteHeader(500)
-		w.Header().Add("Reason", erm)
-		_, err := w.Write([]byte(erm))
+	if bt.GetStatus() == misc.DONE || bt.GetStatus() == misc.FAILED || bt.GetStatus() == misc.TIMEOUT {
+		err := writeCompletedTassToWS(w, r, taskId)
 		if err != nil {
-			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
+			misc.Debugf("Cannot display task %d output. Error: %s", bt.GetId(), err)
 		}
 		return
 	}
-	log.Println("Client connected to run.sh Env websocket")
+
+	ws, err := prepareWebSocket(w, r)
+	defer ws.Close()
+	if err != nil {
+		return
+	}
 	lineReader, err := launcher.GetTaskLineReader(bt.GetId())
 	if err != nil {
 		erm := fmt.Sprintf("Cannot get line reader from the . Error: %s", err)
@@ -120,57 +119,46 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	//errc := make(chan error)
-	//err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
-	//if err != nil {
-	//	log.Println(err)
-	//}
-	//lock := &sync.Mutex{}
-	//wg := &sync.WaitGroup{}
-	//wg.Add(2)
-	//go writeToWS(bt.GetStdOut(), ws, errc, lock, wg)
-	//go writeToWS(bt.GetStdErr(), ws, errc, lock, wg)
-	//go func(ws *websocket.Conn, errc <-chan error) {
-	//	e := <-errc
-	//	if e != nil {
-	//		err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s Error: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()), e)))
-	//		if err != nil {
-	//			log.Println(err)
-	//		}
-	//	} else {
-	//		err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Task (id: %d) Status: %s", bt.GetId(), launcher.GetStatusString(bt.GetStatus()))))
-	//		if err != nil {
-	//			log.Println(err)
-	//		}
-	//	}
-	//
-	//}(ws, errc)
-	//wg.Wait()
-	//close(errc)
 }
 
-//Depreacted
-func writeToWS(in io.Reader, ws *websocket.Conn, errc chan<- error, lock *sync.Mutex, wg *sync.WaitGroup) {
-	bufRdr := bufio.NewReader(in)
-	for {
-		line, _, err := bufRdr.ReadLine()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			errc <- err
-			log.Printf("Cannot read stream. Error: %s", err)
-			break
-		}
-		lock.Lock()
-		err = ws.WriteMessage(websocket.TextMessage, []byte(line))
-		if err != nil {
-			errc <- err
-			log.Printf("Cannot write to websocket. Error: %s", err)
-		}
-		lock.Unlock()
+func writeCompletedTassToWS(w http.ResponseWriter, r *http.Request, taskId int) error {
+	output, err := launcher.GetCompletedTaskOutput(taskId)
+	if err != nil {
+		return err
 	}
-	wg.Done()
+	ws, err := prepareWebSocket(w, r)
+	defer ws.Close()
+	if err != nil {
+		return err
+	}
+	for _, line := range output {
+		_ = ws.WriteMessage(websocket.TextMessage, []byte(line))
+		//TODO: improve this spamming logging
+		//if err != nil {
+		//	misc.Debugf("Cannot write to websocket. Error: %s", err)
+		//}
+	}
+	return nil
+}
+
+func prepareWebSocket(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		erm := fmt.Sprintf("Cannot upgrade connection to use websocket. Error: %s", err)
+		log.Println(erm)
+		w.WriteHeader(500)
+		w.Header().Add("Reason", erm)
+		_, err := w.Write([]byte(erm))
+		if err != nil {
+			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
+		}
+		return nil, err
+	}
+	log.Println("Client connected to run.sh Env websocket")
+	return ws, nil
 }
 
 func RunShPost(w http.ResponseWriter, r *http.Request) {
