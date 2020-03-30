@@ -52,6 +52,8 @@ func config() {
 	viper.SetDefault(misc.AWSRegion, "us-east-1")
 	viper.SetDefault(misc.AWSAccessKey, "") //Configures your AWS access key
 	viper.SetDefault(misc.AWSSecretKey, "") //Configures your AWS secret key
+	viper.SetDefault(misc.AWSSequenceTable, "tfChek-sequence")
+	viper.SetDefault(misc.UseExternalSequence, true)
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)
