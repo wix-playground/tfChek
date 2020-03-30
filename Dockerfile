@@ -59,7 +59,7 @@ COPY  --chown=deployer:deployer --from=0 /build/tfChek .
 COPY  --chown=deployer:deployer --from=0 /build/luggage/tfChek.sh .
 COPY  --chown=deployer:deployer --from=0 /build/templates /templates
 COPY  --chown=deployer:deployer --from=0 /build/static static
-RUN chown -R deployer:deployer * && mkdir -P /var/tfChek/out && chown -R deployer:deployer /var/tfChek && mkdir /var/run/tfChek && chown -R deployer:deployer /var/run/tfChek
+RUN chown -R deployer:deployer * && mkdir -p /var/tfChek/out && chown -R deployer:deployer /var/tfChek && mkdir /var/run/tfChek && chown -R deployer:deployer /var/run/tfChek
 #Switch user
 USER deployer
 
