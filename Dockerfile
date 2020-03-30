@@ -40,12 +40,11 @@ COPY --chown=deployer:deployer luggage/aws_config /home/deployer/.aws/config
 
 #Install ruby
 RUN apk add ruby-dev
-RUN gem install ffi -v 1.12.2
 RUN gem install bundler -v 2.1.4
 RUN gem install netaddr -v 2.0.4
 RUN gem install colorize  zip
 #Graphvis need building tools
-RUN apk add build-base && gem install json -v 2.2.0 && gem install process-group -v 1.1.0 && gem install graphviz -v 1.1.0 &&apk del build-base
+RUN apk add build-base && gem install json -v 2.2.0 && gem install process-group -v 1.1.0 && gem install graphviz -v 1.1.0 && gem install ffi -v 1.12.2 && apk del build-base
 #Install bash dependencies
 RUN apk add ncurses curl zip
 
