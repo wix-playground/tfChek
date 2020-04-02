@@ -388,7 +388,9 @@ func logTaskEnv(tid int, env *[]string) {
 		builder.Grow(50)
 		fmt.Fprintf(&builder, "Task id: %d enjvironment:\n", tid)
 		for i, s := range *env {
-			fmt.Fprintf(&builder, "\t#%d\t%s\n", i, s)
+			kv := strings.SplitN(s, "=", 2)
+			ms := misc.MaskEnvValue(kv[0], kv[1])
+			fmt.Fprintf(&builder, "\t#%d\t%s = %s\n", i, kv[0], ms)
 		}
 		misc.Debug(builder.String())
 	}

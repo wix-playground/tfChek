@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"log"
+	"regexp"
 	"strings"
 )
 
@@ -53,4 +54,18 @@ func maskPass(pass string) string {
 		}
 	}
 	return string(container)
+}
+
+func MaskEnvValue(k, v string) string {
+	var matchKeys = []string{"key", "pass", "token", "secret"}
+	for _, mk := range matchKeys {
+		m, err := regexp.MatchString("(?i)"+mk, k)
+		if err != nil {
+			Debugf("Failed to match regexp. Error: %s", err)
+		}
+		if m {
+			return maskPass(v)
+		}
+	}
+	return v
 }
