@@ -1,7 +1,8 @@
 
 let last = null;
 const urlParams = new URLSearchParams(location.search);
-const ansi_up = new AnsiUp;
+const ansi_up = new AnsiUp();
+
 
 function start_scroll_down() {
     scroll = setInterval(function(){ window.scrollBy(0, 1000); console.log('start');}, 1500);
@@ -18,7 +19,7 @@ function cancel() {
     xmlHttp.onreadystatechange = function() {
         if (xmlHttp.readyState == 4 && xmlHttp.status == 202)
             console.log("Task "+id+" has been marked for deletion");
-    }
+    };
     if (xmlHttp.readyState == 4 && xmlHttp.status >= 400){
         console.log("Failed to cancel task "+id);
     }
@@ -53,30 +54,61 @@ function clearSelection(){
     }
 }
 
+function getNext(){
+    if (urlParams.has('id')) {
+        let cid = urlParams.get('id');
+        let taskId = parseInt(cid,10) + 1;
+        navButton("nextTask","Next",taskId);
+    }
+}
+
+function getPrevious(){
+    if (urlParams.has('id')) {
+        let cid = urlParams.get('id');
+        if (cid > 0) {
+            let taskId = parseInt(cid,10) - 1;
+            navButton("prevTask","Previous",taskId);
+        }
+    }
+}
+
+function navButton(buttonId, buttonText, taskId){
+    let navButton = document.createElement("a");
+    navButton.setAttribute("id", buttonId);
+    navButton.setAttribute("onclick", "navigateToTask("+taskId+")");
+    navButton.setAttribute("class","navButton");
+    navButton.setAttribute("href", "javascript:void(0)");
+    navButton.appendChild(document.createTextNode(buttonText));
+    document.getElementById("bar").appendChild(navButton);
+}
+
+function navigateToTask(id){
+    window.location.search = '?id='+id;
+}
+
 function writeToScreen(message) {
     let output = document.getElementById("output");
-    let anchor = document.getElementById("anchor")
+    let anchor = document.getElementById("anchor");
     let pre = document.createElement("pre");
     pre.style.wordWrap = "break-word";
-    let msg = ansi_up.ansi_to_html(message)
+    let msg = ansi_up.ansi_to_html(message);
     if (message.includes('\r')) {
 
-        console.log("Rewriting: " + last.innerHTML)
-        console.log("with: " + msg)
+        console.log("Rewriting: " + last.innerHTML);
+        console.log("with: " + msg);
         last.innerHTML = msg
 
     } else {
         pre.innerHTML = msg;
-        last = pre
-        output.insertBefore(pre, anchor)
-        window.scrollTo(0, output.scrollHeight)
+        last = pre;
+        output.insertBefore(pre, anchor);
+        window.scrollTo(0, output.scrollHeight);
     }
 }
 
 function connectToWebSocket() {
 
     console.log("Attempting Connection...");
-    const ansi_up = new AnsiUp();
     if (urlParams.has('id')) {
         //Connect ot a websocket
         let proto = "ws";
