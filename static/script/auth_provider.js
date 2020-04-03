@@ -50,7 +50,8 @@ function checkAuthentication() {
                 logoutButton.setAttribute("onclick", "logout()");
                 logoutButton.setAttribute("href", "javascript:void(0)");
                 logoutButton.appendChild(document.createTextNode("Logout"));
-                document.getElementById("bar").appendChild(logoutButton);
+                let buttonBar = document.getElementById("bar");
+                buttonBar.insertBefore(logoutButton, buttonBar.firstChild)
             }
         }
     };
