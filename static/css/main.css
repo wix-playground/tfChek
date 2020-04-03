@@ -71,6 +71,16 @@ body {
     background-color: #17ffff;
     color: black;
 }
+
+.navButton {
+    background-color: rgba(90, 79, 82, 0.98);
+}
+
+.navButton:hover {
+    background-color: #857378;
+    color: black;
+}
+
 #cancel {
     background-color: rgba(163, 59, 67, 0.98);
 }
