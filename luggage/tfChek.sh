@@ -28,7 +28,8 @@ chmod 400 ~/luggage/star_wixpress_com_until_2020.key
 cp /configs/aws_credentials ~/.aws/credentials && chmod 400 ~/.aws/credentials
 
 #Prepare GCloud credentials
-export export GOOGLE_CLOUD_KEYFILE_JSON="/configs/gcloud_keyfile.json"
+cat /configs/gcloud_keyfile.json | sed 's~ RSA PRIVATE KEY~RSAPRIVATEKEY~g'| sed 's~\\n~\n~g' | sed 's~RSAPRIVATEKEY~ RSA PRIVATE KEY~g' > /configs/gcp_key.json
+export export GOOGLE_CLOUD_KEYFILE_JSON="/configs/gcp_key.json"
 
 #Source profile
 source /configs/profile && echo -e "\033[0;32mOK\033[0m Bash profile has been successfully sourced" || echo -e "\033[0;31mERROR\033[0m Failed to source bash profile"
