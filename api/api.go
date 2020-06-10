@@ -368,7 +368,7 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 		if pushPayload.Deleted {
 			log.Printf("Branch %s has been deleted", pushPayload.Ref)
 		}
-		log.Printf("Processed webhook of branch %s", pushPayload.Ref)
+		log.Printf("Processed webhook of branch %s from %s", pushPayload.Ref, pushPayload.Repository.FullName)
 	}
 }
 

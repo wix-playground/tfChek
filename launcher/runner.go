@@ -43,9 +43,10 @@ func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
 	if rsc.Region != "" {
 		args = append(args, "-r", rsc.Region)
 	}
-	if rsc.TerraformVersion != "" {
-		args = append(args, "-t", rsc.TerraformVersion)
-	}
+	//Commented out because flag -t conflicts with timeout flag
+	//if rsc.TerraformVersion != "" {
+	//	args = append(args, "-t", rsc.TerraformVersion)
+	//}
 	if rsc.Env != "" {
 		if rsc.Layer != "" {
 			args = append(args, rsc.Env+"/"+rsc.Layer)
@@ -58,6 +59,6 @@ func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
 	return command, args, nil
 }
 
-func (rsc *RunShCmd) getGtiOrigins() *[]string {
+func (rsc *RunShCmd) getGitOrigins() *[]string {
 	return &rsc.GitOrigins
 }

@@ -14,7 +14,7 @@ func Debug(msg string) {
 
 func Debugf(format string, args ...interface{}) {
 	if viper.GetBool(DebugKey) {
-		msg := fmt.Sprintf(format, args)
+		msg := fmt.Sprintf(format, args...)
 		Debug(msg)
 	}
 }
