@@ -29,13 +29,17 @@ type Manager interface {
 	GetPath() string
 	GetRemote() string
 	IsCloned() bool
+	WaitForWebhook(branch string, timeout int) error
+	UnlockWebhookLock(branch string) error
+	RegisterWebhookLock(branch string) error
 }
 
 type BuiltInManager struct {
-	remoteUrl string
-	repoPath  string
-	remote    *git.Remote
-	repo      *git.Repository
+	remoteUrl    string
+	repoPath     string
+	remote       *git.Remote
+	repo         *git.Repository
+	webhookLocks map[string]chan string
 }
 
 func (b *BuiltInManager) GetRemote() string {
@@ -43,7 +47,6 @@ func (b *BuiltInManager) GetRemote() string {
 }
 
 func (b *BuiltInManager) Open() error {
-
 	repository, err := git.PlainOpen(b.repoPath)
 	if err != nil {
 		log.Printf("Cannot open git repo %s. Error %s", b.repoPath, err)
@@ -64,6 +67,62 @@ func (b *BuiltInManager) IsCloned() bool {
 	} else {
 		return true
 	}
+}
+
+func (b *BuiltInManager) WaitForWebhook(branch string, timeout int) error {
+	if timeout < 0 {
+		return fmt.Errorf("timeout value cannot be negative")
+	}
+	if c, ok := b.webhookLocks[branch]; ok {
+		if c != nil {
+			select {
+			case branchName := <-c:
+				if branchName != branch {
+					if len(branchName) > 0 {
+						misc.Debugf("webhook lock for branch %s received wrong value %s in its bucket. It should be the same. This should never happen. Please contact developers", branch, branchName)
+						return fmt.Errorf("webhook lock for branch %s received wrong value %s in its bucket. It should be the same. This should never happen. Please contact developers", branch, branchName)
+					} else {
+						misc.Debugf("warning. empty branch name in webhook wait at %s branch %s", b.repoPath, branch)
+					}
+				} else {
+					delete(b.webhookLocks, branch)
+					misc.Debugf("webhook lock has been successfully consumed for branch %s", branch)
+				}
+			case <-time.After(time.Duration(timeout) * time.Second):
+				misc.Debugf("webhook lock timeout reached after %d seconds for branch %s", timeout, branch)
+				//Here I will not return an error, giving  chance eto fetch and checkout needed branch anyway.
+				//return fmt.Errorf("webhook lock timeout reached after %d seconds for task %d", timeout,taskId)
+			}
+		} else {
+			misc.Debugf("webhook lock for branch %s is nil", branch)
+			return fmt.Errorf("webhook lock for branch %s is nil", branch)
+		}
+	} else {
+		misc.Debugf("no lock for a branch %s in repo %s exists", branch, b.repoPath)
+		return fmt.Errorf("no lock for a branch %s in repo %s exists", branch, b.repoPath)
+	}
+	return nil
+}
+
+//Locks fetching from the remote repository until corresponding webhook notifies about branch existence
+func (b *BuiltInManager) RegisterWebhookLock(branch string) error {
+	if _, ok := b.webhookLocks[branch]; !ok {
+		b.webhookLocks[branch] = make(chan string, 1)
+		misc.Debugf("webhook lock for a branch %s in repo %s has been successfully registered", branch, b.repoPath)
+	} else {
+		return fmt.Errorf("git manager for %s already has locking channel for the branch %s", b.repoPath, branch)
+	}
+	return nil
+}
+
+func (b *BuiltInManager) UnlockWebhookLock(branch string) error {
+	if bl, ok := b.webhookLocks[branch]; ok {
+		bl <- branch
+		close(bl)
+	} else {
+		return fmt.Errorf("webhook for branch %s has not been registered", branch)
+	}
+	return nil
 }
 
 func (b *BuiltInManager) GetPath() string {
@@ -91,7 +150,8 @@ func GetManager(url, state string) (Manager, error) {
 			urlChunks := strings.Split(url, "/")
 			repoName := urlChunks[len(urlChunks)-1]
 			path := strings.TrimRight(fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state), "/")
-			repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path}
+			whl := make(map[string]chan string)
+			repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path, webhookLocks: whl}
 		}
 		lock.Unlock()
 	}
@@ -137,7 +197,6 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 		attempts := 5
 		for i := 0; i < attempts; i++ {
 			err = b.repo.Fetch(fo)
-			//TODO: Better solution is to prepare repositories when corresponding webhook come (idea: use map of channels for notification )
 			if err != nil {
 				if err.Error() == "already up-to-date" {
 					misc.Debug(fmt.Sprintf("Branch %s of repo %s is already up to date", branch, b.remoteUrl))
@@ -147,6 +206,8 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 				delay := 1 << i
 				log.Printf("Attempt %d from %d failed. Cooldown %d seconds", i+1, attempts, delay)
 				time.Sleep(time.Duration(delay) * time.Second)
+			} else {
+				break
 			}
 		}
 		if err != nil && err.Error() != "already up-to-date" {
@@ -242,8 +303,10 @@ func (b *BuiltInManager) Pull() error {
 
 func getRefSpecs(gitRef plumbing.ReferenceName, remote *git.Remote) (*[]config.RefSpec, error) {
 	refName := gitRef.Short()
-	headRefSpec := config.RefSpec(fmt.Sprintf("+HEAD:refs/remotes/%s/HEAD", remote.Config().Name))
-	refSpecs := []config.RefSpec{headRefSpec}
+	//Disable head temporary
+	//headRefSpec := config.RefSpec(fmt.Sprintf("+HEAD:refs/remotes/%s/HEAD", remote.Config().Name))
+	//refSpecs := []config.RefSpec{headRefSpec}
+	refSpecs := []config.RefSpec{}
 	if gitRef.IsBranch() {
 		branchSpec := config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/remotes/%s/%s", refName, remote.Config().Name, refName))
 		err := branchSpec.Validate()
@@ -262,7 +325,7 @@ func getFetchOptions(gitRef plumbing.ReferenceName, remote *git.Remote) (*git.Fe
 		log.Printf("Could not get all ref specs. Error: %s", err)
 	}
 
-	fo := &git.FetchOptions{RemoteName: remote.Config().Name, Depth: 10, RefSpecs: *refSpecs}
+	fo := &git.FetchOptions{RemoteName: remote.Config().Name, Depth: 1, RefSpecs: *refSpecs}
 	return fo, nil
 }
 

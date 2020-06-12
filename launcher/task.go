@@ -26,6 +26,8 @@ type GitHubAwareTask interface {
 	GetOrigins() *[]string
 	SetAuthors(authors []string)
 	GetAuthors() *[]string
+	AddWebhookLocks() error
+	UnlockWebhookRepoLock(fullName string) error
 }
 
 type RunSHOptions struct {

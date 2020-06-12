@@ -72,12 +72,12 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 	//errPipeReader, errPipeWriter := io.Pipe()
 	//inPipeReader, inPipeWriter := io.Pipe()
 
-	t := RunShTask{Command: command, Args: args, Context: ctx,
+	t := &RunShTask{Command: command, Args: args, Context: ctx,
 		Status: misc.OPEN, save: tm.saveRuns,
 		Socket:    make(chan *websocket.Conn),
 		StateLock: fmt.Sprintf("%s/%s", rcs.Env, rcs.Layer),
 		//out:       outPipeReader, err: errPipeReader, in: inPipeWriter,
-		//outW: outPipeWriter, errW: errPipeWriter, inR: inPipeReader,
+		//outW: outPipehWriter, errW: errPipeWriter, inR: inPipeReader,
 		//Perhaps it is better ot transfer Git Origins via the context
 		GitOrigins: rcs.GitOrigins,
 	}
@@ -85,14 +85,18 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 		t.ExtraEnv = *ee
 	}
 
-	err = tm.Add(&t)
+	err = tm.Add(t)
 	if err != nil {
 		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot add task %v. Error: %s", t, err)
 		}
 	}
 	tm.taskHashes[rcs.hash] = t.Id
-	return &t, err
+	err = t.AddWebhookLocks()
+	if err != nil {
+		misc.Debugf("cannot add webhook locks for task %d", t.Id)
+	}
+	return t, err
 }
 
 func (tm *TaskManagerImpl) Add(t Task) error {

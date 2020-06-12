@@ -221,6 +221,7 @@ func RunShPost(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Cannot respond with message '%s' Error: %s", err, e)
 		}
 	} else {
+
 		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
 		if err != nil {
@@ -347,6 +348,11 @@ func RunShWebHook(w http.ResponseWriter, r *http.Request) {
 					if gaTask, ok := task.(launcher.GitHubAwareTask); ok {
 						authors := fetch_authors(&pushPayload)
 						gaTask.SetAuthors(*authors)
+						fullName := pushPayload.Repository.FullName
+						err = gaTask.UnlockWebhookRepoLock(fullName)
+						if err != nil {
+							misc.Debugf("failed to add github webhook locks. Error: %s", err.Error())
+						}
 					}
 					err = tm.LaunchById(taskId)
 					if err != nil {

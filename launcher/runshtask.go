@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"tfChek/git"
 	"tfChek/github"
 	"tfChek/misc"
@@ -279,51 +280,121 @@ func (rst *RunShTask) GetStdIn() io.Writer {
 
 func (rst *RunShTask) prepareGit() error {
 	//create RUNSH_APTH here for launching run.sh
-
+	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
 	//Prehaps here I have to convert git url to ssh url (in form of "git@github.com:...")
 	gms, err := rst.getGitManagers()
 	if err != nil {
 		return err
 	}
-
+	gmwg := &sync.WaitGroup{}
+	errc := make(chan error)
 	for gi, gitman := range *gms {
-		if viper.GetBool(misc.DebugKey) {
-			log.Printf("Preparing Git repo %d (%s) of %d", gi+1, gitman.GetRemote(), len(rst.GitOrigins))
-		}
-		if gitman.IsCloned() {
-			err := gitman.Open()
+		gmwg.Add(1)
+		go func(errChan chan<- error) {
+			defer gmwg.Done()
+			//Wait for corresponding webhook to come
+			misc.Debugf("Waiting for a webhook to come from %s repo for a task %d", gitman.GetRemote(), rst.Id)
+			wht := viper.GetInt(misc.WebhookWaitTimeoutKey)
+			err := gitman.WaitForWebhook(branch, wht)
 			if err != nil {
-				log.Printf("Cannot open git repository. Error: %s", err)
-				return err
+				errChan <- fmt.Errorf("failed to wait for a webhook lock. Error: %w", err)
+				return
 			}
-		} else {
-			path := gitman.GetPath()
-			_, err := os.Stat(path)
-			if os.IsNotExist(err) {
-				err := os.MkdirAll(path, 0755)
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Preparing Git repo %d (%s) of %d", gi+1, gitman.GetRemote(), len(rst.GitOrigins))
+			}
+			if gitman.IsCloned() {
+				err := gitman.Open()
 				if err != nil {
-					log.Printf("Cannot create directory for git repository. Error: %s", err)
-					return err
+					log.Printf("Cannot open git repository. Error: %s", err)
+					errChan <- err
+					return
+				}
+			} else {
+				path := gitman.GetPath()
+				_, err := os.Stat(path)
+				if os.IsNotExist(err) {
+					err := os.MkdirAll(path, 0755)
+					if err != nil {
+						log.Printf("Cannot create directory for git repository. Error: %s", err)
+						errChan <- err
+						return
+					}
+				}
+				err = gitman.Clone()
+				if err != nil {
+					log.Printf("Cannot clone repository. Error: %s", err)
+					errChan <- err
+					return
 				}
 			}
-			err = gitman.Clone()
-			if err != nil {
-				log.Printf("Cannot clone repository. Error: %s", err)
-				return err
-			}
-		}
-		branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
-		err = gitman.Checkout(branch)
-		if err != nil {
-			log.Printf("Cannot checkout branch ")
-			return err
-		}
-		err = gitman.Pull()
-		if err != nil {
-			log.Printf("Cannot pull changes. Error: %s", err)
-			return err
-		}
 
+			err = gitman.Checkout(branch)
+			if err != nil {
+				log.Printf("Cannot checkout branch ")
+				errChan <- err
+				return
+			}
+			err = gitman.Pull()
+			if err != nil {
+				log.Printf("Cannot pull changes. Error: %s", err)
+				errChan <- err
+				return
+			}
+		}(errc)
+	}
+	go func() {
+		gmwg.Wait()
+		close(errc)
+	}()
+	for gme := range errc {
+		if gme != nil {
+			return gme
+		}
+	}
+	misc.Debugf("preparation of git repositories succesfully finished for task %d", rst.Id)
+	return nil
+}
+
+func (rst *RunShTask) AddWebhookLocks() error {
+	managers, err := rst.getGitManagers()
+	if err != nil {
+		return fmt.Errorf("cannot get git managers for task %d %w", rst.Id, err)
+	}
+	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
+	for _, m := range *managers {
+		//frn, err := git.GetFullRepoName(m.GetRemote())
+		//if err != nil {
+		//	return fmt.Errorf("cannot get full repository name of %s %w",m.GetRemote(), err)
+		//}
+		//if frn == repoFullName {
+		err := m.RegisterWebhookLock(branch)
+		if err != nil {
+			return fmt.Errorf("cannot add webhook lock for task %d at %s, %w", rst.Id, m.GetPath(), err)
+		}
+		//}
+	}
+	return nil
+}
+
+func (rst *RunShTask) UnlockWebhookRepoLock(fullName string) error {
+	managers, err := rst.getGitManagers()
+	if err != nil {
+		return fmt.Errorf("cannot get git managers for task %d %w", rst.Id, err)
+	}
+	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
+	for _, m := range *managers {
+		frn, err := git.GetFullRepoName(m.GetRemote())
+		if err != nil {
+			return fmt.Errorf("cannot get full repository name of %s %w", m.GetRemote(), err)
+		}
+		if frn == fullName {
+			err := m.UnlockWebhookLock(branch)
+			if err != nil {
+				return fmt.Errorf("cannot add webhook lock for task %d at %s, %w", rst.Id, m.GetPath(), err)
+			}
+			misc.Debugf("successfully unlocked task %d at %s", rst.Id, m.GetPath())
+		}
 	}
 	return nil
 }
