@@ -90,6 +90,7 @@ func (rst *RunShTask) Register() error {
 }
 
 func (rst *RunShTask) Schedule() error {
+	//TODO: make scheduling locked by webhooks using waiting group
 	if rst.Status == misc.REGISTERED {
 		rst.Status = misc.SCHEDULED
 		rst.notifySubscribers()
@@ -306,6 +307,7 @@ func (rst *RunShTask) prepareGit() error {
 			if viper.GetBool(misc.DebugKey) {
 				log.Printf("Preparing Git repo %d (%s) of %d", gi+1, manager.GetRemote(), len(rst.GitOrigins))
 			}
+			//Clone it if needed
 			if manager.IsCloned() {
 				err := manager.Open()
 				if err != nil {
@@ -332,6 +334,7 @@ func (rst *RunShTask) prepareGit() error {
 				}
 			}
 
+			//Switch the branch
 			err = manager.SwitchTo(branch)
 			if err != nil {
 				log.Printf("Cannot switch branch")

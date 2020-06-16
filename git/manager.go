@@ -159,6 +159,7 @@ func GetManager(url, state string) (Manager, error) {
 	return repomngrs[key], nil
 }
 
+//Deprecated
 func (b *BuiltInManager) Checkout(branchName string) error {
 	if b.repo == nil {
 		return errors.New("the repository has been not cloned yet")
@@ -248,6 +249,7 @@ func (b *BuiltInManager) Checkout(branchName string) error {
 	return nil
 }
 
+//Deprecated
 func (b *BuiltInManager) Pull() error {
 	gitRef, err := b.repo.Head()
 	if err != nil {
@@ -334,8 +336,8 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 		origin := b.remote.Config().Name
 		localBranch := plumbing.NewBranchReferenceName(branch)
 		remoteBranch := plumbing.NewRemoteReferenceName(origin, branch)
-		//fo, _ := getFetchOptions(localBranch, b.remote)
-		fo, _ := getFetchAllOptions(b.remote)
+		fo, _ := getFetchOptions(localBranch, b.remote)
+		//fo, _ := getFetchAllOptions(b.remote)
 		misc.Debugf("Remote %s fetch refspecs: %v", b.remote.Config().Name, b.remote.Config().Fetch)
 		misc.Debug(fmt.Sprintf("Trying to fetch localBranch %s form repo %s", localBranch, b.remote.String()))
 		attempts := 5
@@ -388,8 +390,31 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 				return errors.New(fmt.Sprintf("cannot checkout remoteUrl reference %s. Error: %s", localBranch.String(), err))
 			}
 		}
-	}
 
+		po := getPullOptions(localBranch, origin)
+		misc.Debug(fmt.Sprintf("Trying to pull localBranch %s form repo %s", localBranch, b.remote.String()))
+		for i := 0; i < attempts; i++ {
+			err = gwt.Pull(po)
+			if err != nil {
+				if err.Error() == "already up-to-date" {
+					misc.Debug(fmt.Sprintf("Branch %s of repo %s is already up to date", localBranch, b.remoteUrl))
+					break
+				}
+				log.Printf("Pull failed. Cannot fetch remoteUrl references from localBranch %s of repo %s. Error: %s", localBranch, b.remoteUrl, err)
+				delay := 4 << i
+				log.Printf("Attempt %d from %d failed. Cooldown %d seconds", i+1, attempts, delay)
+				//Skip the timeout waiting after the last sleep
+				if i < attempts-1 {
+					time.Sleep(time.Duration(delay) * time.Second)
+				}
+			} else {
+				break
+			}
+		}
+		if err != nil && err.Error() != "already up-to-date" {
+			return err
+		}
+	}
 	//if b.repo == nil {
 	//	return errors.New("the repository has been not cloned yet")
 	//}
@@ -476,30 +501,41 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 	return nil
 }
 
-func getRefSpecs(gitRef plumbing.ReferenceName, remote *git.Remote) (*[]config.RefSpec, error) {
-	refName := gitRef.Short()
-	headRefSpec := config.RefSpec(fmt.Sprintf("+HEAD:refs/remotes/%s/HEAD", remote.Config().Name))
-	refSpecs := []config.RefSpec{headRefSpec}
-	//refSpecs := []config.RefSpec{}
-	if gitRef.IsBranch() {
-		branchSpec := config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/remotes/%s/%s", refName, remote.Config().Name, refName))
-		err := branchSpec.Validate()
-		if err != nil {
-			log.Printf("RefSpec is not valid. Error: %s", err)
-			return &refSpecs, err
-		}
-		refSpecs = append(refSpecs, branchSpec)
+func getBranchRefSpecs(gitRef plumbing.ReferenceName, remote *git.Remote) (*[]config.RefSpec, error) {
+	if !gitRef.IsBranch() {
+		return nil, fmt.Errorf("%s should be branch", gitRef.String())
 	}
-	return &refSpecs, nil
+	refName := gitRef.Short()
+	fetchRefSpecs := remote.Config().Fetch
+	branchRef := config.RefSpec(fmt.Sprintf("+%s:%s", plumbing.NewBranchReferenceName(refName), plumbing.NewRemoteReferenceName(remote.Config().Name, refName)))
+	err := branchRef.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("validation of branch reference '%s' failed. Error: %w", branchRef.String(), err)
+	}
+	fetchRefSpecs = append(fetchRefSpecs, branchRef)
+	return &fetchRefSpecs, nil
+	//headRefSpec := config.RefSpec(fmt.Sprintf("+HEAD:refs/remotes/%s/HEAD", remote.Config().Name))
+	//refSpecs := []config.RefSpec{headRefSpec}
+	////refSpecs := []config.RefSpec{}
+	//if gitRef.IsBranch() {
+	//	branchSpec := config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/remotes/%s/%s", refName, remote.Config().Name, refName))
+	//	err := branchSpec.Validate()
+	//	if err != nil {
+	//		log.Printf("RefSpec is not valid. Error: %s", err)
+	//		return &refSpecs, err
+	//	}
+	//	refSpecs = append(refSpecs, branchSpec)
+	//}
+	//return &refSpecs, nil
 }
 
 func getFetchOptions(gitRef plumbing.ReferenceName, remote *git.Remote) (*git.FetchOptions, error) {
-	refSpecs, err := getRefSpecs(gitRef, remote)
+	refSpecs, err := getBranchRefSpecs(gitRef, remote)
 	if err != nil {
 		log.Printf("Could not get all ref specs. Error: %s", err)
 	}
 
-	fo := &git.FetchOptions{RemoteName: remote.Config().Name, Depth: 1, RefSpecs: *refSpecs}
+	fo := &git.FetchOptions{RemoteName: remote.Config().Name, RefSpecs: *refSpecs}
 	return fo, nil
 }
 
@@ -509,9 +545,8 @@ func getFetchAllOptions(remote *git.Remote) (*git.FetchOptions, error) {
 }
 
 func getPullOptions(gitRef plumbing.ReferenceName, remoteName string) *git.PullOptions {
-	//po := &git.PullOptions{RemoteName: remoteName, SingleBranch: true, ReferenceName: gitRef, RecurseSubmodules: git.NoRecurseSubmodules, Force: true}
-	po := &git.PullOptions{SingleBranch: false, ReferenceName: gitRef, RecurseSubmodules: git.NoRecurseSubmodules, Force: true, Depth: 50}
-
+	po := &git.PullOptions{RemoteName: remoteName, SingleBranch: true, ReferenceName: gitRef, RecurseSubmodules: git.NoRecurseSubmodules, Force: true}
+	//po := &git.PullOptions{SingleBranch: false, ReferenceName: gitRef, RecurseSubmodules: git.NoRecurseSubmodules, Force: true, Depth: 50}
 	return po
 }
 
