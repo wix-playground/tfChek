@@ -319,10 +319,10 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 		}
 		return err
 	}
-	worktree, err := b.repo.Worktree()
+	gwt, err := b.repo.Worktree()
 	if err != nil {
 		if viper.GetBool(misc.DebugKey) {
-			log.Printf("Cannot get worktree of git repository %s. Error: %s", b.repoPath, err)
+			log.Printf("Cannot get gwt of git repository %s. Error: %s", b.repoPath, err)
 		}
 		return err
 	}
@@ -334,24 +334,19 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 		origin := b.remote.Config().Name
 		localBranch := plumbing.NewBranchReferenceName(branch)
 		remoteBranch := plumbing.NewRemoteReferenceName(origin, branch)
-
-		po := getPullOptions(localBranch, origin)
-		misc.Debug(fmt.Sprintf("Trying to pull localBranch %s form repo %s", localBranch, b.remote.String()))
+		//fo, _ := getFetchOptions(localBranch, b.remote)
+		fo, _ := getFetchAllOptions(b.remote)
+		misc.Debugf("Remote %s fetch refspecs: %v", b.remote.Config().Name, b.remote.Config().Fetch)
+		misc.Debug(fmt.Sprintf("Trying to fetch localBranch %s form repo %s", localBranch, b.remote.String()))
 		attempts := 5
 		for i := 0; i < attempts; i++ {
-			err = worktree.Pull(po)
-			if err != nil && err.Error() != "already up-to-date" {
-				log.Printf("Pull failed. Cannot pull remoteUrl references. Error: %s", err)
-				if err.Error() != "already up-to-date" {
-					return err
-				}
-			}
+			err = b.repo.Fetch(fo)
 			if err != nil {
 				if err.Error() == "already up-to-date" {
 					misc.Debug(fmt.Sprintf("Branch %s of repo %s is already up to date", localBranch, b.remoteUrl))
 					break
 				}
-				log.Printf("Pull failed. Cannot fetch remoteUrl references from localBranch %s of repo %s. Error: %s", localBranch, b.remoteUrl, err)
+				log.Printf("Checkout failed. Cannot fetch remoteUrl references from localBranch %s of repo %s. Error: %s", localBranch, b.remoteUrl, err)
 				delay := 4 << i
 				log.Printf("Attempt %d from %d failed. Cooldown %d seconds", i+1, attempts, delay)
 				//Skip the timeout waiting after the last sleep
@@ -365,10 +360,11 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 		if err != nil && err.Error() != "already up-to-date" {
 			return err
 		}
-		err = worktree.Checkout(&git.CheckoutOptions{Branch: localBranch, Create: true, Keep: false})
+		co := &git.CheckoutOptions{Branch: localBranch}
+		err = gwt.Checkout(co)
 		if err != nil {
 			if err.Error() == "reference not found" {
-				err = worktree.Checkout(&git.CheckoutOptions{Branch: remoteBranch})
+				err = gwt.Checkout(&git.CheckoutOptions{Branch: remoteBranch})
 				if err != nil {
 					log.Printf("Cannot checkout remoteUrl reference %s. Error: %s", remoteBranch, err)
 					return errors.New(fmt.Sprintf("cannot checkout remoteUrl reference %s. Error: %s", localBranch.String(), err))
@@ -381,13 +377,11 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 				branchRef := plumbing.NewHashReference(localBranch, currentRef.Hash())
 
 				if !branchRef.Name().IsRemote() {
-					err = worktree.Checkout(&git.CheckoutOptions{Branch: branchRef.Name(), Create: true})
+					err = gwt.Checkout(&git.CheckoutOptions{Branch: branchRef.Name(), Create: true})
 					if err != nil {
 						log.Printf("Cannot checkout remoteUrl reference %s. Error: %s", branch, err)
 						return errors.New(fmt.Sprintf("cannot checkout remoteUrl reference %s. Error: %s", localBranch.String(), err))
 					}
-				} else {
-					misc.Debugf("branch name %s should be local one", branchRef)
 				}
 			} else {
 				log.Printf("Cannot checkout remoteUrl reference %s. Error: %s", branch, err)
@@ -395,15 +389,98 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 			}
 		}
 	}
+
+	//if b.repo == nil {
+	//	return errors.New("the repository has been not cloned yet")
+	//}
+	//if b.repo.Storer == nil {
+	//	log.Println("WARNING! Git repository Storer is nil value. This should never happen!")
+	//}
+	//remotes, err := b.repo.Remotes()
+	//if err != nil {
+	//	if viper.GetBool(misc.DebugKey) {
+	//		log.Printf("Cannot get remotes of git repository %s. Error: %s", b.repoPath, err)
+	//	}
+	//	return err
+	//}
+	//gwt, err := b.repo.Worktree()
+	//if err != nil {
+	//	if viper.GetBool(misc.DebugKey) {
+	//		log.Printf("Cannot get gwt of git repository %s. Error: %s", b.repoPath, err)
+	//	}
+	//	return err
+	//}
+	//if len(remotes) == 0 {
+	//	//This should never happen after clone
+	//	log.Printf("Cannot find git remotes")
+	//	return errors.New("cannot find git remotes")
+	//} else {
+	//	origin := b.remote.Config().Name
+	//	localBranch := plumbing.NewBranchReferenceName(branch)
+	//	remoteBranch := plumbing.NewRemoteReferenceName(origin, branch)
+	//
+	//	po := getPullOptions(localBranch, origin)
+	//	misc.Debug(fmt.Sprintf("Trying to pull localBranch %s form repo %s", localBranch, b.remote.String()))
+	//	attempts := 5
+	//	for i := 0; i < attempts; i++ {
+	//		err = gwt.Pull(po)
+	//		if err != nil {
+	//			if err.Error() == "already up-to-date" {
+	//				misc.Debug(fmt.Sprintf("Branch %s of repo %s is already up to date", localBranch, b.remoteUrl))
+	//				break
+	//			}
+	//			log.Printf("Pull failed. Cannot fetch remoteUrl references from localBranch %s of repo %s. Error: %s", localBranch, b.remoteUrl, err)
+	//			delay := 4 << i
+	//			log.Printf("Attempt %d from %d failed. Cooldown %d seconds", i+1, attempts, delay)
+	//			//Skip the timeout waiting after the last sleep
+	//			if i < attempts-1 {
+	//				time.Sleep(time.Duration(delay) * time.Second)
+	//			}
+	//		} else {
+	//			break
+	//		}
+	//	}
+	//	if err != nil && err.Error() != "already up-to-date" {
+	//		return err
+	//	}
+	//	err = gwt.Checkout(&git.CheckoutOptions{Branch: localBranch, Create: true, Keep: false})
+	//	if err != nil {
+	//		if err.Error() == "reference not found" {
+	//			err = gwt.Checkout(&git.CheckoutOptions{Branch: remoteBranch})
+	//			if err != nil {
+	//				log.Printf("Cannot checkout remoteUrl reference %s. Error: %s", remoteBranch, err)
+	//				return errors.New(fmt.Sprintf("cannot checkout remoteUrl reference %s. Error: %s", localBranch.String(), err))
+	//			}
+	//			currentRef, err := b.repo.Head()
+	//			if err != nil {
+	//				log.Printf("Cannot get HEAD. Error: %s", err)
+	//				return err
+	//			}
+	//			branchRef := plumbing.NewHashReference(localBranch, currentRef.Hash())
+	//
+	//			if !branchRef.Name().IsRemote() {
+	//				err = gwt.Checkout(&git.CheckoutOptions{Branch: branchRef.Name(), Create: true})
+	//				if err != nil {
+	//					log.Printf("Cannot checkout remoteUrl reference %s. Error: %s", branch, err)
+	//					return errors.New(fmt.Sprintf("cannot checkout remoteUrl reference %s. Error: %s", localBranch.String(), err))
+	//				}
+	//			} else {
+	//				misc.Debugf("branch name %s should be local one", branchRef)
+	//			}
+	//		} else {
+	//			log.Printf("Cannot checkout remoteUrl reference %s. Error: %s", branch, err)
+	//			return errors.New(fmt.Sprintf("cannot checkout remoteUrl reference %s. Error: %s", localBranch.String(), err))
+	//		}
+	//	}
+	//}
 	return nil
 }
 
 func getRefSpecs(gitRef plumbing.ReferenceName, remote *git.Remote) (*[]config.RefSpec, error) {
 	refName := gitRef.Short()
-	//Disable head temporary
-	//headRefSpec := config.RefSpec(fmt.Sprintf("+HEAD:refs/remotes/%s/HEAD", remote.Config().Name))
-	//refSpecs := []config.RefSpec{headRefSpec}
-	refSpecs := []config.RefSpec{}
+	headRefSpec := config.RefSpec(fmt.Sprintf("+HEAD:refs/remotes/%s/HEAD", remote.Config().Name))
+	refSpecs := []config.RefSpec{headRefSpec}
+	//refSpecs := []config.RefSpec{}
 	if gitRef.IsBranch() {
 		branchSpec := config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/remotes/%s/%s", refName, remote.Config().Name, refName))
 		err := branchSpec.Validate()
@@ -426,8 +503,15 @@ func getFetchOptions(gitRef plumbing.ReferenceName, remote *git.Remote) (*git.Fe
 	return fo, nil
 }
 
+func getFetchAllOptions(remote *git.Remote) (*git.FetchOptions, error) {
+	fo := &git.FetchOptions{RemoteName: remote.Config().Name, RefSpecs: []config.RefSpec{config.RefSpec("+refs/heads/*:refs/remotes/origin/*")}}
+	return fo, nil
+}
+
 func getPullOptions(gitRef plumbing.ReferenceName, remoteName string) *git.PullOptions {
-	po := &git.PullOptions{RemoteName: remoteName, SingleBranch: true, ReferenceName: gitRef, RecurseSubmodules: git.NoRecurseSubmodules, Force: true}
+	//po := &git.PullOptions{RemoteName: remoteName, SingleBranch: true, ReferenceName: gitRef, RecurseSubmodules: git.NoRecurseSubmodules, Force: true}
+	po := &git.PullOptions{SingleBranch: false, ReferenceName: gitRef, RecurseSubmodules: git.NoRecurseSubmodules, Force: true, Depth: 50}
+
 	return po
 }
 

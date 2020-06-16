@@ -282,6 +282,9 @@ func (rst *RunShTask) prepareGit() error {
 	//create RUNSH_APTH here for launching run.sh
 	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
 	//Prehaps here I have to convert git url to ssh url (in form of "git@github.com:...")
+
+	//TODO: use map here!!!!!
+
 	gms, err := rst.getGitManagers()
 	if err != nil {
 		return err
