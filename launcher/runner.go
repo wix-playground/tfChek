@@ -10,6 +10,7 @@ type RunShCmd struct {
 	Omit             bool
 	No               bool
 	Yes              bool
+	Debug            bool
 	Env              string
 	Layer            string
 	Targets          []string
@@ -39,6 +40,9 @@ func (rsc *RunShCmd) CommandArgs() (string, []string, error) {
 	}
 	if rsc.UsePlan {
 		args = append(args, "-p")
+	}
+	if rsc.Debug {
+		args = append(args, "-d")
 	}
 	if rsc.Region != "" {
 		args = append(args, "-r", rsc.Region)

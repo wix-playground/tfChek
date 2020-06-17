@@ -7,9 +7,12 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	gogitFormat "gopkg.in/src-d/go-git.v4/plumbing/format/config"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"tfChek/misc"
@@ -315,6 +318,7 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 		log.Println("WARNING! Git repository Storer is nil value. This should never happen!")
 	}
 	remotes, err := b.repo.Remotes()
+	//checkConfig(b.repo)
 	if err != nil {
 		if viper.GetBool(misc.DebugKey) {
 			log.Printf("Cannot get remotes of git repository %s. Error: %s", b.repoPath, err)
@@ -362,10 +366,12 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 		if err != nil && err.Error() != "already up-to-date" {
 			return err
 		}
-		co := &git.CheckoutOptions{Branch: localBranch}
+		co := &git.CheckoutOptions{Branch: localBranch, Force: true}
+		misc.Debugf("trying to checkout %s at %s", localBranch.String(), b.repoPath)
 		err = gwt.Checkout(co)
 		if err != nil {
 			if err.Error() == "reference not found" {
+				misc.Debugf("trying to checkout %s at %s", remoteBranch.String(), b.repoPath)
 				err = gwt.Checkout(&git.CheckoutOptions{Branch: remoteBranch})
 				if err != nil {
 					log.Printf("Cannot checkout remoteUrl reference %s. Error: %s", remoteBranch, err)
@@ -390,7 +396,12 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 				return errors.New(fmt.Sprintf("cannot checkout remoteUrl reference %s. Error: %s", localBranch.String(), err))
 			}
 		}
-
+		b.checkConfig()
+		err := b.trackBranch(origin, branch)
+		if err != nil {
+			return fmt.Errorf("cannot set tracked branch. Error: %w", err)
+		}
+		b.checkConfig()
 		po := getPullOptions(localBranch, origin)
 		misc.Debug(fmt.Sprintf("Trying to pull localBranch %s form repo %s", localBranch, b.remote.String()))
 		for i := 0; i < attempts; i++ {
@@ -499,6 +510,84 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 	//	}
 	//}
 	return nil
+}
+
+func (b *BuiltInManager) trackBranch(remote, branch string) error {
+	lb := plumbing.NewBranchReferenceName(branch)
+	rb := plumbing.NewRemoteReferenceName(remote, branch)
+	refSpec := config.RefSpec(fmt.Sprintf("+%s:%s", lb, rb))
+	err := refSpec.Validate()
+	if err != nil {
+		return fmt.Errorf("refspec %q validation failed. Error %w", refSpec.String(), err)
+	}
+	conf, err := b.repo.Config()
+	if err != nil {
+		return fmt.Errorf("cannot get conf of git repo. Error: %w", err)
+	}
+	rawConfig := conf.Raw
+	if !rawConfig.Section(misc.GitSectionRemote).HasSubsection(remote) {
+		return fmt.Errorf("remote subsections does not contain given remote %q ", remote)
+	}
+	remoteSection := rawConfig.Section(misc.GitSectionRemote)
+	remoteSubSection := remoteSection.Subsection(remote)
+	branchSection := rawConfig.Section(misc.GitSectionBranch)
+	remoteSubSection = remoteSubSection.AddOption(misc.GitSectionOptionFetch, refSpec.String())
+	remoteSection.Subsections = []*gogitFormat.Subsection{remoteSubSection}
+	rawConfig.Sections[1] = remoteSection
+	remConf := conf.Remotes[remote]
+	remConf.Fetch = append(remConf.Fetch, refSpec)
+	branchSubSection := createSubsectionForBranch(branch, remote)
+	branchSection.Subsections = append(branchSection.Subsections, branchSubSection)
+	rawConfig.Sections[2] = branchSection
+	conf.Raw = rawConfig
+	branchObj := &config.Branch{Name: branch, Remote: remote, Merge: lb}
+	conf.Branches[branch] = branchObj
+	err = b.saveConfig(conf)
+	if err != nil {
+		return fmt.Errorf("failed to save git configuration for %s Error: %w", b.repoPath, err)
+	}
+	return nil
+}
+
+func (b *BuiltInManager) saveConfig(conf *config.Config) error {
+	serializedConfig, err := conf.Marshal()
+	if err != nil {
+		return fmt.Errorf("cannot serialize git configuration. Error: %w", err)
+	}
+	configPath := path.Join(b.repoPath, ".git", "config")
+	err = ioutil.WriteFile(configPath, serializedConfig, 0644)
+	return err
+}
+
+func createSubsectionForBranch(branch, remote string) *gogitFormat.Subsection {
+	ref := plumbing.NewBranchReferenceName(branch)
+	var opts []*gogitFormat.Option
+	opts = append(opts, &gogitFormat.Option{Key: misc.GitSectionRemote, Value: remote}, &gogitFormat.Option{Key: misc.GitSectionOptionMerge, Value: ref.String()})
+	s := &gogitFormat.Subsection{Name: branch, Options: gogitFormat.Options(opts)}
+	return s
+}
+
+func (b *BuiltInManager) checkConfig() {
+	c, err := b.repo.Config()
+	if err != nil {
+		misc.Debugf("cannot get config. Error: %s", err.Error())
+		return
+	}
+	for i, s := range c.Raw.Sections {
+		misc.Debugf("configuration section %d %s", i, s.Name)
+		misc.Debugf("options: ")
+		for io, o := range s.Options {
+			misc.Debugf("- option %d %s=%s", io, o.Key, o.Value)
+		}
+		for n, ss := range s.Subsections {
+			misc.Debugf("\t%d. subsection %s of %s", n, ss.Name, s.Name)
+			misc.Debugf("\t subsection options: ")
+			for io, o := range ss.Options {
+				misc.Debugf("\t- subsection option %d %s=%s", io, o.Key, o.Value)
+			}
+		}
+
+	}
 }
 
 func getBranchRefSpecs(gitRef plumbing.ReferenceName, remote *git.Remote) (*[]config.RefSpec, error) {

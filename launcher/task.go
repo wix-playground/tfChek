@@ -38,6 +38,7 @@ type RunSHOptions struct {
 	OmitGitCheck   string
 	Filter         string
 	Region         string
+	Debug          string
 	UpgradeVersion string
 	Location       string
 	Targets        string
@@ -81,6 +82,7 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 	omit := strings.ToLower(strings.TrimSpace(rc.CommandOptions.OmitGitCheck)) == "1"
 	usePlan := strings.ToLower(strings.TrimSpace(rc.CommandOptions.UsePlan)) == "n"
 	filter := strings.TrimSpace(rc.CommandOptions.Filter)
+	debug := strings.ToLower(strings.TrimSpace(rc.CommandOptions.Debug)) == "true"
 	region := strings.TrimSpace(rc.CommandOptions.Region)
 	terraform := strings.TrimSpace(rc.CommandOptions.UpgradeVersion)
 
@@ -96,7 +98,7 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 	startTime := time.Unix(rc.Instant, 0)
 	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit,
 		UsePlan: usePlan, Filter: filter, Region: region, TerraformVersion: terraform,
-		Targets: tgts, No: no, Yes: yes, GitOrigins: *gorigins, Started: &startTime}
+		Targets: tgts, No: no, Yes: yes, Debug: debug, GitOrigins: *gorigins, Started: &startTime}
 	return &cmd, nil
 }
 

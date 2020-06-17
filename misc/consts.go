@@ -45,6 +45,10 @@ const (
 	AWSSequenceTable      = "aws_sequence_table"
 	UseExternalSequence   = "use_external_sequence"
 	WebhookWaitTimeoutKey = "webhook_timeout"
+	GitSectionRemote      = "remote"
+	GitSectionBranch      = "branch"
+	GitSectionOptionFetch = "fetch"
+	GitSectionOptionMerge = "merge"
 )
 
 const (
