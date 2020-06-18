@@ -17,7 +17,7 @@ import (
 const (
 	MajorVersion = 0
 	MinorVersion = 8
-	Revision     = 0
+	Revision     = 1
 )
 
 func config() {
@@ -132,10 +132,15 @@ func initialize() {
 }
 
 func showVersion() {
-	fmt.Printf("%d.%d.%d", MajorVersion, MinorVersion, Revision)
+	fmt.Print(getVersion())
+}
+
+func getVersion() string {
+	return fmt.Sprintf("%d.%d.%d", MajorVersion, MinorVersion, Revision)
 }
 
 func main() {
+	log.Printf("Starting tfChek version: %s", getVersion())
 	initialize()
 	defer launcher.GetTaskManager().Close()
 	defer github.CloseAll()

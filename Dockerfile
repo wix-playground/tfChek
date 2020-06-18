@@ -1,5 +1,5 @@
 #Stage 0
-FROM golang:1.13-alpine3.10
+FROM golang:1.14.4-alpine3.12
 # Add Maintainer Info
 LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
 # Set the Current Working Directory inside the container
@@ -17,7 +17,7 @@ RUN go build -o tfChek .
 
 
 #Stage 1
-FROM bash:4.4
+FROM bash:4.4.23
 WORKDIR /application
 LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
 RUN apk --no-cache add ca-certificates
@@ -39,17 +39,18 @@ RUN mkdir /home/deployer/.aws && chown deployer:deployer /home/deployer/.aws
 COPY --chown=deployer:deployer luggage/aws_config /home/deployer/.aws/config
 
 #Install ruby
-RUN apk add ruby-dev
+RUN apk add ruby=2.7.1-r3 ruby-dev=2.7.1-r3
 RUN gem install bundler -v 2.1.4
 RUN gem install netaddr -v 2.0.4
 RUN gem install colorize  zip
 #Graphvis need building tools
 RUN apk add build-base && \
 gem install json -v 2.3.0 && \
-gem install process-group -v 1.2.1 && \
-gem install graphviz -v 1.1.0 && \
-gem install ffi -v 1.12.2 && \
+gem install ffi -v 1.13.1 && \
 gem install process-terminal -v 0.2.0 && \
+gem install process-group -v 1.2.3 && \
+gem install process-pipeline -v 1.0.2 && \
+gem install graphviz -v 1.2.0 && \
 apk del build-base
 #Install bash dependencies
 RUN apk add ncurses curl zip
