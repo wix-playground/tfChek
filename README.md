@@ -86,4 +86,7 @@ Changelog
 > Application is able to create GitHub pull requests and GitHub issues. Send notifications via GitHub. Also it can automatically merge the pull requests.
 
 *0.5.0*
-> Add Github OAuth2 functionality
+> Add Github OAuth2 
+
+*0.8.0*
+> Add support of wtf
