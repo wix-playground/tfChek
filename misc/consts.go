@@ -24,6 +24,7 @@ const (
 	TokenKey              = "token"
 	VersionKey            = "version"
 	Fuse                  = "condom"
+	SkipPullFastForward   = "omit_git_pull"
 	QueueLengthKey        = "qlength"
 	TimeoutKey            = "timeout"
 	RepoOwnerKey          = "repo_owner"

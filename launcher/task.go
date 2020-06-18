@@ -94,6 +94,10 @@ func (rc *RunSHLaunchConfig) GetCommand() (*RunShCmd, error) {
 		no = true
 		yes = false
 	}
+	if viper.GetBool(misc.SkipPullFastForward) {
+		misc.Debugf("forcefully setting git omit option due to %q option is set to true", misc.SkipPullFastForward)
+		omit = true
+	}
 	gorigins := normalizeGitRemotes(&rc.RepoSources)
 	startTime := time.Unix(rc.Instant, 0)
 	cmd = RunShCmd{Layer: layer, Env: env, All: all, Omit: omit,
