@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"tfChek/git"
 	"tfChek/github"
 	"tfChek/misc"
@@ -52,14 +53,14 @@ func (rst *RunShTask) getFirstGitManager() (git.Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(*managers) == 0 {
+	if len(managers) == 0 {
 		msg := fmt.Sprintf("No git managers vere returned for task %d", rst.Id)
 		if viper.GetBool(misc.DebugKey) {
 			log.Print(msg)
 		}
 		return nil, errors.New(msg)
 	}
-	return (*managers)[0], nil
+	return (managers)[0], nil
 }
 
 func (rst *RunShTask) GetOrigins() *[]string {
@@ -89,6 +90,7 @@ func (rst *RunShTask) Register() error {
 }
 
 func (rst *RunShTask) Schedule() error {
+	//TODO: make scheduling locked by webhooks using waiting group
 	if rst.Status == misc.REGISTERED {
 		rst.Status = misc.SCHEDULED
 		rst.notifySubscribers()
@@ -121,9 +123,9 @@ func (rst *RunShTask) Done() error {
 			}
 			return err
 		}
-		for ghi, ghm := range *gitManagers {
+		for ghi, ghm := range gitManagers {
 			if viper.GetBool(misc.DebugKey) {
-				log.Printf("Processing GitHub manager %d of %d", ghi+1, len(*gitManagers))
+				log.Printf("Processing GitHub manager %d of %d", ghi+1, len(gitManagers))
 			}
 			manager := github.GetManager(ghm.GetRemote())
 			if manager != nil {
@@ -279,56 +281,139 @@ func (rst *RunShTask) GetStdIn() io.Writer {
 
 func (rst *RunShTask) prepareGit() error {
 	//create RUNSH_APTH here for launching run.sh
-
+	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
 	//Prehaps here I have to convert git url to ssh url (in form of "git@github.com:...")
+
+	//TODO: use map here!!!!!
+
 	gms, err := rst.getGitManagers()
 	if err != nil {
 		return err
 	}
-
-	for gi, gitman := range *gms {
-		if viper.GetBool(misc.DebugKey) {
-			log.Printf("Preparing Git repo %d (%s) of %d", gi+1, gitman.GetRemote(), len(rst.GitOrigins))
-		}
-		if gitman.IsCloned() {
-			err := gitman.Open()
+	gmwg := &sync.WaitGroup{}
+	errc := make(chan error)
+	for gi, gitman := range gms {
+		gmwg.Add(1)
+		go func(manager git.Manager, errChan chan<- error) {
+			defer gmwg.Done()
+			//Wait for corresponding webhook to come
+			misc.Debugf("Waiting for a webhook to come from %s repo for a task %d", manager.GetRemote(), rst.Id)
+			wht := viper.GetInt(misc.WebhookWaitTimeoutKey)
+			err := manager.WaitForWebhook(branch, wht)
 			if err != nil {
-				log.Printf("Cannot open git repository. Error: %s", err)
-				return err
+				errChan <- fmt.Errorf("failed to wait for a webhook lock. Error: %w", err)
+				return
 			}
-		} else {
-			path := gitman.GetPath()
-			_, err := os.Stat(path)
-			if os.IsNotExist(err) {
-				err := os.MkdirAll(path, 0755)
+			if viper.GetBool(misc.DebugKey) {
+				log.Printf("Preparing Git repo %d (%s) of %d", gi+1, manager.GetRemote(), len(rst.GitOrigins))
+			}
+			//Clone it if needed
+			if manager.IsCloned() {
+				err := manager.Open()
 				if err != nil {
-					log.Printf("Cannot create directory for git repository. Error: %s", err)
-					return err
+					log.Printf("Cannot open git repository. Error: %s", err)
+					errChan <- err
+					return
+				}
+			} else {
+				path := manager.GetPath()
+				_, err := os.Stat(path)
+				if os.IsNotExist(err) {
+					err := os.MkdirAll(path, 0755)
+					if err != nil {
+						log.Printf("Cannot create directory for git repository. Error: %s", err)
+						errChan <- err
+						return
+					}
+				}
+				err = manager.Clone()
+				if err != nil {
+					log.Printf("Cannot clone repository. Error: %s", err)
+					errChan <- err
+					return
 				}
 			}
-			err = gitman.Clone()
-			if err != nil {
-				log.Printf("Cannot clone repository. Error: %s", err)
-				return err
-			}
-		}
-		branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
-		err = gitman.Checkout(branch)
-		if err != nil {
-			log.Printf("Cannot checkout branch ")
-			return err
-		}
-		err = gitman.Pull()
-		if err != nil {
-			log.Printf("Cannot pull changes. Error: %s", err)
-			return err
-		}
 
+			//Switch the branch
+			err = manager.SwitchTo(branch)
+			if err != nil {
+				log.Printf("Cannot switch branch")
+				errChan <- err
+				return
+			}
+
+			//err = manager.Checkout(branch)
+			//if err != nil {
+			//	log.Printf("Cannot checkout branch ")
+			//	errChan <- err
+			//	return
+			//}
+			//err = manager.Pull()
+			//if err != nil {
+			//	log.Printf("Cannot pull changes. Error: %s", err)
+			//	errChan <- err
+			//	return
+			//}
+		}(gitman, errc)
+	}
+	go func() {
+		gmwg.Wait()
+		close(errc)
+	}()
+	for gme := range errc {
+		if gme != nil {
+			return gme
+		}
+	}
+	misc.Debugf("preparation of git repositories succesfully finished for task %d", rst.Id)
+	return nil
+}
+
+func (rst *RunShTask) AddWebhookLocks() error {
+	managers, err := rst.getGitManagers()
+	if err != nil {
+		return fmt.Errorf("cannot get git managers for task %d %w", rst.Id, err)
+	}
+	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
+	for _, m := range managers {
+		//frn, err := git.GetFullRepoName(m.GetRemote())
+		//if err != nil {
+		//	return fmt.Errorf("cannot get full repository name of %s %w",m.GetRemote(), err)
+		//}
+		//if frn == repoFullName {
+		err := m.RegisterWebhookLock(branch)
+		if err != nil {
+			return fmt.Errorf("cannot add webhook lock for task %d at %s, %w", rst.Id, m.GetPath(), err)
+		}
+		//}
 	}
 	return nil
 }
 
-func (rst *RunShTask) getGitManagers() (*[]git.Manager, error) {
+func (rst *RunShTask) UnlockWebhookRepoLock(fullName string) error {
+	//TODO: It is better to return a map here
+	managers, err := rst.getGitManagers()
+	if err != nil {
+		return fmt.Errorf("cannot get git managers for task %d %w", rst.Id, err)
+	}
+	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
+	for _, m := range managers {
+		frn, err := git.GetFullRepoName(m.GetRemote())
+		if err != nil {
+			return fmt.Errorf("cannot get full repository name of %s %w", m.GetRemote(), err)
+		}
+		if frn == fullName {
+			err := m.UnlockWebhookLock(branch)
+			if err != nil {
+				return fmt.Errorf("cannot add webhook lock for task %d at %s, %w", rst.Id, m.GetPath(), err)
+			}
+			misc.Debugf("successfully unlocked task %d at %s", rst.Id, m.GetPath())
+		}
+	}
+	return nil
+}
+
+func (rst *RunShTask) getGitManagers() ([]git.Manager, error) {
 	if len(rst.GitOrigins) == 0 {
 		return nil, errors.New(fmt.Sprintf("Cannot obtain a git manager. Task id %d contains no git remotes", rst.Id))
 	} else {
@@ -340,7 +425,7 @@ func (rst *RunShTask) getGitManagers() (*[]git.Manager, error) {
 			}
 			managers = append(managers, gitman)
 		}
-		return &managers, nil
+		return managers, nil
 	}
 }
 
@@ -353,7 +438,7 @@ func (rst *RunShTask) generateRunshPath() (string, error) {
 		}
 	}
 	var paths []string
-	for _, gitman := range *gms {
+	for _, gitman := range gms {
 		paths = append(paths, gitman.GetPath())
 	}
 	return strings.Join(paths, ":"), nil
@@ -370,7 +455,7 @@ func (rst *RunShTask) prepareGitHub() error {
 	}
 	repoOwner := viper.GetString(misc.RepoOwnerKey)
 	token := viper.GetString(misc.TokenKey)
-	for _, gm := range *gitManagers {
+	for _, gm := range gitManagers {
 		gitHubManager := github.GetManager(gm.GetRemote())
 		if gitHubManager == nil {
 			//Initialize GitHub manager

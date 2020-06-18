@@ -76,7 +76,7 @@ func (c *ClientRunSH) CreateIssue(branch string, assignees *[]string) (*int, err
 			if err != nil {
 				log.Printf("Cannot add assignees to the issue %d. Error: %s", in, err)
 			} else {
-				log.Printf("Issue %d has been updated with assignees")
+				log.Printf("Issue %d has been updated with assignees", issue.Number)
 			}
 		}
 	}

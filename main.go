@@ -54,6 +54,8 @@ func config() {
 	viper.SetDefault(misc.AWSSecretKey, "") //Configures your AWS secret key
 	viper.SetDefault(misc.AWSSequenceTable, "tfChek-sequence")
 	viper.SetDefault(misc.UseExternalSequence, true)
+	viper.SetDefault(misc.WebhookWaitTimeoutKey, 180)
+	viper.SetDefault(misc.SkipPullFastForward, true) //TODO: set it to false when wtf is ready for fast forward pull of the branch
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)

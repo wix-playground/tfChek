@@ -57,7 +57,7 @@ func maskPass(pass string) string {
 }
 
 func MaskEnvValue(k, v string) string {
-	var matchKeys = []string{"key", "pass", "token", "secret"}
+	var matchKeys = []string{"key", "pass", "token", "secret", "credentials"}
 	for _, mk := range matchKeys {
 		m, err := regexp.MatchString("(?i)"+mk, k)
 		if err != nil {
