@@ -90,3 +90,6 @@ Changelog
 
 *0.8.0*
 > Add support of wtf
+
+*0.8.1*
+> Updated Dockerfile and make version output in server logs
