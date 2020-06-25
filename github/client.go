@@ -4,7 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/go-github/v28/github"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	"log"
+	"strconv"
+	"strings"
+	"tfChek/misc"
+	"time"
 )
 import "golang.org/x/oauth2"
 
@@ -16,6 +21,8 @@ type Client interface {
 	Close(number int) error
 	Comment(number int, comment *string) error
 	Merge(number int, message string) (*string, error)
+	DeleteBranch(number int) error
+}
 }
 
 type ClientRunSH struct {
@@ -39,6 +46,120 @@ func (c *ClientRunSH) getHeadSHA(number int) (string, error) {
 	return *pullRequest.Head.SHA, nil
 }
 
+func (c *ClientRunSH) DeleteBranch(number int) error {
+	ref := plumbing.NewBranchReferenceName(fmt.Sprintf("%s%d",misc.TaskPrefix,number))
+	response, err := c.client.Git.DeleteRef(c.context, c.Owner, c.Repository, ref.String())
+	if err != nil {
+		if response != nil {
+			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+		}
+		return fmt.Errorf("failed to delete branch %s, Error: %w",ref.String(), err)
+	}
+	return nil
+}
+
+func (c *ClientRunSH) getBranchesList() ([]*github.Reference,error) {
+	listOptions:=&github.ReferenceListOptions{Type: misc.TaskPrefix}
+	refs, response, err := c.client.Git.ListRefs(c.context, c.Owner, c.Repository, listOptions)
+	if err != nil {
+		if response != nil {
+			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+		}
+		return nil, fmt.Errorf("cannot list branches by prefix %s, Error: %w",misc.TaskPrefix, err)
+	}
+	return refs, nil
+}
+
+func (c *ClientRunSH) getPRs() ([]*github.PullRequest, error) {
+	listOptions := &github.PullRequestListOptions{Base: misc.TaskPrefix}
+	prs, response, err := c.client.PullRequests.List(c.context, c.Owner, c.Repository, listOptions)
+	if err != nil {
+		if response != nil {
+			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+		}
+		return nil, fmt.Errorf("cannot list PRs by base prefix %s, Error: %w",misc.TaskPrefix, err)
+	}
+	return prs, nil
+}
+
+func (c *ClientRunSH) ensureIssueLabel() (*github.Label, error) {
+	var label *github.Label
+	label, response, err := c.client.Issues.GetLabel(c.context, c.Owner, c.Repository, misc.IssueLabel)
+	if err != nil {
+		if response != nil {
+			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+		}
+		return nil, fmt.Errorf("cannot get label %s, Error: %w",misc.IssueLabel, err)
+	}
+	if label == nil {
+		color := "red"
+		labelName := misc.IssueLabel
+		labelDescription := misc.IssueLabelDesc
+		l := &github.Label{Name: &labelName,Color: &color, Description: &labelDescription}
+		label, response, err := c.client.Issues.CreateLabel(c.context, c.Owner, c.Repository, l)
+		if err != nil {
+			if response != nil {
+				misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+			}
+			return nil, fmt.Errorf("cannot create label %s, Error: %w",misc.IssueLabel, err)
+		}
+		return label, nil
+	}
+	return label, nil
+}
+
+func (c *ClientRunSH) getIssues() ([]*github.PullRequest, error) {
+	//label, err := c.ensureIssueLabel()
+	//if err!= nil {
+	//	misc.Debugf("cannot get label for issue query. Error: %s", err)
+	//}
+	//listOptions := &github.IssueListOptions{Labels: []string{label.String()}}
+	listOptions := &github.IssueListOptions{Filter: misc.IssueAllFilter}
+	prs, response, err := c.client.PullRequests.List(c.context, c.Owner, c.Repository, listOptions)
+	if err != nil {
+		if response != nil {
+			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+		}
+		return nil, fmt.Errorf("cannot list PRs by base prefix %s, Error: %w",misc.TaskPrefix, err)
+	}
+	return prs, nil
+}
+
+func (c *ClientRunSH) CleanupBranches(after *time.Time, mergedOnly bool) error {
+//cleanup merged PRs
+	prs, err := c.getPRs()
+	if err != nil {
+		return fmt.Errorf("cannot list PRs. Error: %w", err)
+	}
+	for i, pr := range prs {
+		misc.Debugf("Processing %d/%d PR %d for branch deletion",i+1,len(prs), pr.ID)
+		ref := pr.Base.GetRef()
+		if mergedOnly && !pr.GetMerged() {
+			misc.Debugf("Skip not merged PR %d",pr.ID)
+			continue
+		}
+		parts := strings.Split(ref,"/")
+		branch := parts[len(parts)-1]
+		if strings.HasPrefix(branch,misc.TaskPrefix) {
+misc.Debugf("Deleting branch %s", branch)
+	taskNumber, err := strconv.Atoi(branch[len(misc.TaskPrefix):])
+	if err != nil {
+		return fmt.Errorf("cannot convert branch %s to task number. Error: %w",branch,err)
+	}
+err = c.DeleteBranch(taskNumber)
+if err != nil {
+	return fmt.Errorf("failed to delete branch %s (ref: %s). Error: %w",branch,ref,err)
+}
+		} else {
+			misc.Debugf("Skip non tfChek related branch %s (ref: %s)",branch,ref)
+		}
+	}
+	//TODO: implement it
+	//cleanup issues
+	//cleanup leftover branches
+	return nil
+}
+
 //Returns merge SHA commit hash and error
 func (c *ClientRunSH) Merge(number int, message string) (*string, error) {
 	sha, err := c.getHeadSHA(number)
@@ -58,7 +179,7 @@ func (c *ClientRunSH) Merge(number int, message string) (*string, error) {
 
 func (c *ClientRunSH) CreateIssue(branch string, assignees *[]string) (*int, error) {
 	newIssue := &github.IssueRequest{Title: github.String(fmt.Sprintf("Cannot merge branch %s", branch)),
-		Body: github.String("_This pull request was automatically generated by tfChek_\nPlease fix this issue")}
+		Body: github.String("_This pull request was automatically generated by tfChek_\nPlease fix this issue"), Labels: &[]string{misc.IssueLabel}}
 	if assignees != nil && len(*assignees) > 0 {
 		a := *assignees
 		newIssue.Assignee = &a[0]

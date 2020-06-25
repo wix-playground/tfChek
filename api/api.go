@@ -407,7 +407,7 @@ func handleReqErr(err error, w http.ResponseWriter) {
 
 func GetTaskIdByHash(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
-	hash := v["Hash"]
+	hash := v[misc.ApiHashKey]
 	w.Header().Set("Content-Type", "application/json")
 	tm := launcher.GetTaskManager()
 	tid, err := tm.GetId(hash)

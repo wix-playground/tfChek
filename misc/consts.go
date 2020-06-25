@@ -50,6 +50,11 @@ const (
 	GitSectionBranch      = "branch"
 	GitSectionOptionFetch = "fetch"
 	GitSectionOptionMerge = "merge"
+	ApiHashKey            = "Hash"
+	ApiBranchKey          = "branch"
+	IssueLabel            = APPNAME
+	IssueLabelDesc        = "tfChek managed issue"
+	IssueAllFilter        = "all"
 )
 
 const (

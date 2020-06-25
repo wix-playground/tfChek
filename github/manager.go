@@ -145,31 +145,6 @@ func process(m *Manager, prd *TaskResult) {
 	}
 }
 
-//func getOutput(branch string) string{
-//	if strings.HasPrefix(branch, misc.TaskPrefix) {
-//		chunks := strings.Split(branch,"-")
-//		if len(chunks) != 2 {
-//			log.Printf("Cannot get task id from branch name %s", branch)
-//			return misc.NOOUTPUT
-//		}
-//		id, err := strconv.Atoi(chunks[1])
-//		if err != nil {
-//			log.Printf("Cannot extract task id from branch %s", branch)
-//			return misc.NOOUTPUT
-//		}
-//		tm := launcher.GetTaskManager()
-//		t := tm.Get(id)
-//		if t== nil {
-//			log.Printf("Cannot obtain task %d",id)
-//			return misc.NOOUTPUT
-//		}
-//		out := t.GetCleanOut()
-//		return out
-//	}
-//		log.Printf("Cannot parse branch name %s", branch)
-//	return misc.NOOUTPUT
-//}
-
 func (m *Manager) GetChannel() chan<- *TaskResult {
 	return m.data
 }

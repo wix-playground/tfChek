@@ -300,6 +300,7 @@ func (tm *TaskManagerImpl) Close() error {
 func (tm *TaskManagerImpl) Start() error {
 	go tm.starter()
 	//Perhaps I should handle errors...
+	//TODO: implement readiness check
 	return nil
 }
 
