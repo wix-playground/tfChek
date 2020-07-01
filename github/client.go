@@ -114,15 +114,15 @@ func (c *ClientRunSH) getIssues() ([]*github.PullRequest, error) {
 	//	misc.Debugf("cannot get label for issue query. Error: %s", err)
 	//}
 	//listOptions := &github.IssueListOptions{Labels: []string{label.String()}}
-	listOptions := &github.IssueListOptions{Filter: misc.IssueAllFilter}
-	prs, response, err := c.client.PullRequests.List(c.context, c.Owner, c.Repository, listOptions)
+	listOptions := &github.IssueListByRepoOptions{}
+	iss, response, err := c.client.Issues.ListByRepo(c.context,c.Owner,c.Repository,listOptions)
 	if err != nil {
 		if response != nil {
 			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
 		}
 		return nil, fmt.Errorf("cannot list PRs by base prefix %s, Error: %w",misc.TaskPrefix, err)
 	}
-	return prs, nil
+	return iss, nil
 }
 
 func (c *ClientRunSH) CleanupBranches(after *time.Time, mergedOnly bool) error {
