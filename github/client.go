@@ -6,7 +6,6 @@ import (
 	"github.com/google/go-github/v28/github"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"log"
-	"strconv"
 	"strings"
 	"tfChek/misc"
 	"time"
@@ -22,7 +21,10 @@ type Client interface {
 	Comment(number int, comment *string) error
 	Merge(number int, message string) (*string, error)
 	DeleteBranch(number int) error
-}
+	CleanupBranches(after *time.Time, mergedOnly bool) error
+	//TODO: add cleanup Issues capability
+	//DeleteIssue()
+	//CleanupIssues()
 }
 
 type ClientRunSH struct {
@@ -47,25 +49,29 @@ func (c *ClientRunSH) getHeadSHA(number int) (string, error) {
 }
 
 func (c *ClientRunSH) DeleteBranch(number int) error {
-	ref := plumbing.NewBranchReferenceName(fmt.Sprintf("%s%d",misc.TaskPrefix,number))
-	response, err := c.client.Git.DeleteRef(c.context, c.Owner, c.Repository, ref.String())
+	ref := plumbing.NewBranchReferenceName(fmt.Sprintf("%s%d", misc.TaskPrefix, number))
+	return c.deleteRef(ref.String())
+}
+
+func (c *ClientRunSH) deleteRef(ref string) error {
+	response, err := c.client.Git.DeleteRef(c.context, c.Owner, c.Repository, ref)
 	if err != nil {
 		if response != nil {
-			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+			misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
 		}
-		return fmt.Errorf("failed to delete branch %s, Error: %w",ref.String(), err)
+		return fmt.Errorf("failed to delete branch %s, Error: %w", ref, err)
 	}
 	return nil
 }
 
-func (c *ClientRunSH) getBranchesList() ([]*github.Reference,error) {
-	listOptions:=&github.ReferenceListOptions{Type: misc.TaskPrefix}
+func (c *ClientRunSH) getBranchesList() ([]*github.Reference, error) {
+	listOptions := &github.ReferenceListOptions{Type: misc.TaskPrefix}
 	refs, response, err := c.client.Git.ListRefs(c.context, c.Owner, c.Repository, listOptions)
 	if err != nil {
 		if response != nil {
-			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+			misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
 		}
-		return nil, fmt.Errorf("cannot list branches by prefix %s, Error: %w",misc.TaskPrefix, err)
+		return nil, fmt.Errorf("cannot list branches by prefix %s, Error: %w", misc.TaskPrefix, err)
 	}
 	return refs, nil
 }
@@ -75,9 +81,9 @@ func (c *ClientRunSH) getPRs() ([]*github.PullRequest, error) {
 	prs, response, err := c.client.PullRequests.List(c.context, c.Owner, c.Repository, listOptions)
 	if err != nil {
 		if response != nil {
-			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+			misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
 		}
-		return nil, fmt.Errorf("cannot list PRs by base prefix %s, Error: %w",misc.TaskPrefix, err)
+		return nil, fmt.Errorf("cannot list PRs by base prefix %s, Error: %w", misc.TaskPrefix, err)
 	}
 	return prs, nil
 }
@@ -87,76 +93,101 @@ func (c *ClientRunSH) ensureIssueLabel() (*github.Label, error) {
 	label, response, err := c.client.Issues.GetLabel(c.context, c.Owner, c.Repository, misc.IssueLabel)
 	if err != nil {
 		if response != nil {
-			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+			misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
 		}
-		return nil, fmt.Errorf("cannot get label %s, Error: %w",misc.IssueLabel, err)
+		return nil, fmt.Errorf("cannot get label %s, Error: %w", misc.IssueLabel, err)
 	}
 	if label == nil {
 		color := "red"
 		labelName := misc.IssueLabel
 		labelDescription := misc.IssueLabelDesc
-		l := &github.Label{Name: &labelName,Color: &color, Description: &labelDescription}
+		l := &github.Label{Name: &labelName, Color: &color, Description: &labelDescription}
 		label, response, err := c.client.Issues.CreateLabel(c.context, c.Owner, c.Repository, l)
 		if err != nil {
 			if response != nil {
-				misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+				misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
 			}
-			return nil, fmt.Errorf("cannot create label %s, Error: %w",misc.IssueLabel, err)
+			return nil, fmt.Errorf("cannot create label %s, Error: %w", misc.IssueLabel, err)
 		}
 		return label, nil
 	}
 	return label, nil
 }
 
-func (c *ClientRunSH) getIssues() ([]*github.PullRequest, error) {
+func (c *ClientRunSH) getIssues() ([]*github.Issue, error) {
 	//label, err := c.ensureIssueLabel()
 	//if err!= nil {
 	//	misc.Debugf("cannot get label for issue query. Error: %s", err)
 	//}
 	//listOptions := &github.IssueListOptions{Labels: []string{label.String()}}
 	listOptions := &github.IssueListByRepoOptions{}
-	iss, response, err := c.client.Issues.ListByRepo(c.context,c.Owner,c.Repository,listOptions)
+	iss, response, err := c.client.Issues.ListByRepo(c.context, c.Owner, c.Repository, listOptions)
 	if err != nil {
 		if response != nil {
-			misc.Debugf("Response status %d %s. Body: %s",response.StatusCode, response.Status,response.Body)
+			misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
 		}
-		return nil, fmt.Errorf("cannot list PRs by base prefix %s, Error: %w",misc.TaskPrefix, err)
+		return nil, fmt.Errorf("cannot list PRs by base prefix %s, Error: %w", misc.TaskPrefix, err)
 	}
 	return iss, nil
 }
 
 func (c *ClientRunSH) CleanupBranches(after *time.Time, mergedOnly bool) error {
-//cleanup merged PRs
+	//cleanup merged PRs
 	prs, err := c.getPRs()
 	if err != nil {
 		return fmt.Errorf("cannot list PRs. Error: %w", err)
 	}
 	for i, pr := range prs {
-		misc.Debugf("Processing %d/%d PR %d for branch deletion",i+1,len(prs), pr.ID)
+		misc.Debugf("Processing %d/%d PR %d for branch deletion", i+1, len(prs), pr.ID)
 		ref := pr.Base.GetRef()
 		if mergedOnly && !pr.GetMerged() {
-			misc.Debugf("Skip not merged PR %d",pr.ID)
+			misc.Debugf("Skip not merged PR %d", pr.ID)
 			continue
 		}
-		parts := strings.Split(ref,"/")
+		parts := strings.Split(ref, "/")
 		branch := parts[len(parts)-1]
-		if strings.HasPrefix(branch,misc.TaskPrefix) {
-misc.Debugf("Deleting branch %s", branch)
-	taskNumber, err := strconv.Atoi(branch[len(misc.TaskPrefix):])
-	if err != nil {
-		return fmt.Errorf("cannot convert branch %s to task number. Error: %w",branch,err)
-	}
-err = c.DeleteBranch(taskNumber)
-if err != nil {
-	return fmt.Errorf("failed to delete branch %s (ref: %s). Error: %w",branch,ref,err)
-}
+		if strings.HasPrefix(branch, misc.TaskPrefix) {
+			misc.Debugf("Deleting branch %s", branch)
+			err = c.deleteRef(ref)
+			//taskNumber, err := strconv.Atoi(branch[len(misc.TaskPrefix):])
+			//if err != nil {
+			//	return fmt.Errorf("cannot convert branch %s to task number. Error: %w", branch, err)
+			//}
+			//err = c.DeleteBranch(taskNumber)
+			if err != nil {
+				return fmt.Errorf("failed to delete branch %s (ref: %s). Error: %w", branch, ref, err)
+			}
 		} else {
-			misc.Debugf("Skip non tfChek related branch %s (ref: %s)",branch,ref)
+			misc.Debugf("Skip non tfChek related branch %s (ref: %s)", branch, ref)
 		}
 	}
-	//TODO: implement it
-	//cleanup issues
-	//cleanup leftover branches
+
+	bList, err := c.getBranchesList()
+	if err != nil {
+		misc.Debugf("cannot get branches list for repo %s. Error: %e", c.Repository, err)
+		return fmt.Errorf("cannot get branches list for repo %s. Error: %e", c.Repository, err)
+	}
+	for i, branch := range bList {
+		misc.Debugf("processing ref %d/%d for branch deletion", i, len(bList))
+		commit, response, err := c.client.Git.GetCommit(c.context, c.Owner, c.Repository, branch.GetObject().GetSHA())
+		if err != nil {
+			misc.Debugf("cannot get commit object from ref %s", branch.String())
+			if response != nil {
+				misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
+			}
+			return fmt.Errorf("cannot get commit object by ref %s, Error: %w", branch.String(), err)
+		}
+		if after == nil {
+			misc.Debug("Warning! No time constraint for branch deletion. All branches will be removed")
+		}
+		if after == nil || commit.GetAuthor().Date.After(*after) {
+			misc.Debugf("deleting %s", branch.GetRef())
+			err := c.deleteRef(branch.GetRef())
+			if err != nil {
+				return fmt.Errorf("failed to delete %s. Error: %w", branch.String(), err)
+			}
+		}
+	}
 	return nil
 }
 
