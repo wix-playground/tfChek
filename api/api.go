@@ -231,6 +231,10 @@ func RunShPost(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func FormatIdParam() string {
+	return fmt.Sprintf("{%s}", misc.IdParam)
+}
+
 func Cancel(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
 	vars := mux.Vars(r)
