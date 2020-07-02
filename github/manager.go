@@ -15,10 +15,11 @@ var ml sync.Mutex
 var managers map[string]*Manager = make(map[string]*Manager)
 
 type Manager struct {
-	data    chan *TaskResult
-	client  Client
-	stopped bool
-	started bool
+	data       chan *TaskResult
+	client     Client
+	stopped    bool
+	started    bool
+	Repository string
 }
 
 type TaskResult struct {
@@ -36,7 +37,7 @@ func InitManager(repository, owner, token string) {
 	ml.Lock()
 	s := make(chan *TaskResult, 20)
 	c := NewClientRunSH(extractRepoName(repository), owner, token)
-	managers[repository] = &Manager{data: s, client: c, stopped: false, started: false}
+	managers[repository] = &Manager{data: s, client: c, stopped: false, started: false, Repository: repository}
 	ml.Unlock()
 	return
 }
@@ -74,6 +75,14 @@ func GetManager(repository string) *Manager {
 		}
 	}
 	return m
+}
+
+func GetAllManagers() []*Manager {
+	var mgrs []*Manager
+	for _, v := range managers {
+		mgrs = append(mgrs, v)
+	}
+	return mgrs
 }
 
 func (m *Manager) Start() {
@@ -148,6 +157,11 @@ func process(m *Manager, prd *TaskResult) {
 func (m *Manager) GetChannel() chan<- *TaskResult {
 	return m.data
 }
+
+func (m *Manager) GetClient() Client {
+	return m.client
+}
+
 func (m *Manager) Close() {
 	m.stopped = true
 	close(m.data)

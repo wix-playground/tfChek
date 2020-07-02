@@ -234,7 +234,7 @@ func RunShPost(w http.ResponseWriter, r *http.Request) {
 func Cancel(w http.ResponseWriter, r *http.Request) {
 	tm := launcher.GetTaskManager()
 	vars := mux.Vars(r)
-	id := vars["Id"]
+	id := vars[misc.IdParam]
 	if id == "" {
 		log.Println("Cannot cancel with no id")
 		w.WriteHeader(404)

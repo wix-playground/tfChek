@@ -55,6 +55,10 @@ const (
 	IssueLabel            = APPNAME
 	IssueLabelDesc        = "tfChek managed issue"
 	IssueAllFilter        = "all"
+	IdParam               = "Id"
+	ContentTypeKey        = "Content-Type"
+	ContentTypeJson       = "application/json"
+	ContentTypeMarkdown   = "text/markdown"
 )
 
 const (
