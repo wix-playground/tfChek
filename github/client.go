@@ -21,7 +21,7 @@ type Client interface {
 	Comment(number int, comment *string) error
 	Merge(number int, message string) (*string, error)
 	DeleteBranch(number int) error
-	CleanupBranches(after *time.Time, mergedOnly bool) error
+	CleanupBranches(before *time.Time, mergedOnly bool) (map[string]bool, error)
 	//TODO: add cleanup Issues capability
 	//DeleteIssue()
 	//CleanupIssues()
@@ -131,11 +131,12 @@ func (c *ClientRunSH) getIssues() ([]*github.Issue, error) {
 	return iss, nil
 }
 
-func (c *ClientRunSH) CleanupBranches(after *time.Time, mergedOnly bool) error {
+func (c *ClientRunSH) CleanupBranches(before *time.Time, mergedOnly bool) (map[string]bool, error) {
 	//cleanup merged PRs
+	status := make(map[string]bool)
 	prs, err := c.getPRs()
 	if err != nil {
-		return fmt.Errorf("cannot list PRs. Error: %w", err)
+		return nil, fmt.Errorf("cannot list PRs. Error: %w", err)
 	}
 	for i, pr := range prs {
 		misc.Debugf("Processing %d/%d PR %d for branch deletion", i+1, len(prs), pr.ID)
@@ -155,7 +156,11 @@ func (c *ClientRunSH) CleanupBranches(after *time.Time, mergedOnly bool) error {
 			//}
 			//err = c.DeleteBranch(taskNumber)
 			if err != nil {
-				return fmt.Errorf("failed to delete branch %s (ref: %s). Error: %w", branch, ref, err)
+				status[ref] = false
+				misc.Debugf("failed to delete branch %s (ref: %s). Error: %s", branch, ref, err)
+				//return nil, fmt.Errorf("failed to delete branch %s (ref: %s). Error: %w", branch, ref, err)
+			} else {
+				status[ref] = true
 			}
 		} else {
 			misc.Debugf("Skip non tfChek related branch %s (ref: %s)", branch, ref)
@@ -165,7 +170,7 @@ func (c *ClientRunSH) CleanupBranches(after *time.Time, mergedOnly bool) error {
 	bList, err := c.getBranchesList()
 	if err != nil {
 		misc.Debugf("cannot get branches list for repo %s. Error: %e", c.Repository, err)
-		return fmt.Errorf("cannot get branches list for repo %s. Error: %e", c.Repository, err)
+		return status, fmt.Errorf("cannot get branches list for repo %s. Error: %e", c.Repository, err)
 	}
 	for i, branch := range bList {
 		misc.Debugf("processing ref %d/%d for branch deletion", i, len(bList))
@@ -175,20 +180,22 @@ func (c *ClientRunSH) CleanupBranches(after *time.Time, mergedOnly bool) error {
 			if response != nil {
 				misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
 			}
-			return fmt.Errorf("cannot get commit object by ref %s, Error: %w", branch.String(), err)
+			return status, fmt.Errorf("cannot get commit object by ref %s, Error: %w", branch.String(), err)
 		}
-		if after == nil {
+		if before == nil {
 			misc.Debug("Warning! No time constraint for branch deletion. All branches will be removed")
 		}
-		if after == nil || commit.GetAuthor().Date.After(*after) {
+		if before == nil || commit.GetAuthor().Date.Before(*before) {
 			misc.Debugf("deleting %s", branch.GetRef())
 			err := c.deleteRef(branch.GetRef())
 			if err != nil {
-				return fmt.Errorf("failed to delete %s. Error: %w", branch.String(), err)
+				status[branch.GetRef()] = false
+				misc.Debugf("failed to delete %s. Error: %s", branch.String(), err)
+				//return fmt.Errorf("failed to delete %s. Error: %w", branch.String(), err)
 			}
 		}
 	}
-	return nil
+	return status, nil
 }
 
 //Returns merge SHA commit hash and error

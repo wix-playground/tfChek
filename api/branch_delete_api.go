@@ -5,20 +5,66 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"tfChek/github"
 	"tfChek/misc"
+	"time"
 )
 
+//TODO: introduce some interface here for error reporting
 type DeleteResponse struct {
-	Error  error
-	Status map[string]*DeleteStatus
+	Error    error  `json:"-"`
+	ErrorMsg string `json:"error"`
+	Status   map[string]*DeleteStatus
 }
 
 type DeleteStatus struct {
-	Deleted bool
-	Error   error
+	Status   map[string]bool
+	Error    error  `json:"-"`
+	ErrorMsg string `json:"error"`
+}
+
+func NewDeleteResponse(err error) *DeleteResponse {
+	status := make(map[string]*DeleteStatus)
+	emsg := ""
+	if err != nil {
+		emsg = err.Error()
+	}
+	return &DeleteResponse{Error: err, ErrorMsg: emsg, Status: status}
+}
+func (dr *DeleteResponse) SetRepoBranchStatus(repository, branch string, deleted bool, err error) {
+	emsg := ""
+	if err != nil {
+		emsg = err.Error()
+	}
+	var s map[string]bool
+	if dr.Status[repository].Status == nil {
+		s = make(map[string]bool)
+	} else {
+		s = dr.Status[repository].Status
+	}
+	s[branch] = deleted
+	ds := &DeleteStatus{Status: s, Error: err, ErrorMsg: emsg}
+	dr.Status[repository] = ds
+}
+func (dr *DeleteResponse) SetRepoStatus(repository string, status map[string]bool, err error) {
+	emsg := ""
+	if err != nil {
+		emsg = err.Error()
+	}
+	ds := &DeleteStatus{Status: status, Error: err, ErrorMsg: emsg}
+	dr.Status[repository] = ds
+}
+
+func (dr *DeleteResponse) SetError(err error) {
+	dr.Error = err
+	emsg := ""
+	if err != nil {
+		emsg = err.Error()
+	}
+	dr.ErrorMsg = emsg
 }
 
 func DeleteCIBranch(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +83,7 @@ func DeleteCIBranch(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				misc.Debugf("cannot convert branch id %s to int. Error: %s", s[1], err)
 				w.WriteHeader(http.StatusNotAcceptable)
-				dr := &DeleteResponse{Error: fmt.Errorf("cannot convert branch %s to int. Error: %w", branch, err)}
+				dr := NewDeleteResponse(fmt.Errorf("cannot convert branch %s to int. Error: %w", branch, err))
 				mdr, err := json.Marshal(dr)
 				if err != nil {
 					w.Header().Add(misc.ContentTypeKey, misc.ContentTypeMarkdown)
@@ -62,7 +108,7 @@ func DeleteCIBranch(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			misc.Debugf("cannot convert branch id %s to int. Error: %s", id, err)
 			w.WriteHeader(http.StatusNotAcceptable)
-			dr := &DeleteResponse{Error: fmt.Errorf("cannot convert branch id %s to int. Error: %w", id, err)}
+			dr := NewDeleteResponse(fmt.Errorf("cannot convert branch id %s to int. Error: %w", id, err))
 			mdr, err := json.Marshal(dr)
 			if err != nil {
 				w.Header().Add(misc.ContentTypeKey, misc.ContentTypeMarkdown)
@@ -84,22 +130,32 @@ func DeleteCIBranch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Actual logic is here
-	status := make(map[string]*DeleteStatus)
+	//status := make(map[string]*DeleteStatus)
+	if managers == nil {
+		dr := NewDeleteResponse(fmt.Errorf("no GitHub managers have been initialized yet"))
+		reportError(w, r, dr, http.StatusAccepted)
+		return
+	}
+	dr := NewDeleteResponse(nil)
+
 	for _, m := range managers {
 		err := m.GetClient().DeleteBranch(taskId)
 		if err != nil {
-			status[m.Repository] = &DeleteStatus{Deleted: false, Error: err}
+			dr.SetRepoBranchStatus(m.Repository, branch, false, err)
+			//status[m.Repository] = &DeleteStatus{Deleted: false, Error: err}
 			misc.Debugf("failed to delete branch %s in repo %s. Error: %s", branch, m.Repository, err)
+		} else {
+			dr.SetRepoBranchStatus(m.Repository, branch, true, nil)
 		}
 	}
-	ds := &DeleteResponse{Error: nil, Status: status}
-	marshalledStatus, err := json.Marshal(ds)
+	//ds := &DeleteResponse{Error: nil, Status: status}
+	marshalledStatus, err := json.Marshal(dr)
 	w.WriteHeader(http.StatusAccepted)
 	if err != nil {
-		misc.Debugf("cannot marshal response %v. Error: %s", ds, err)
+		misc.Debugf("cannot marshal response %v. Error: %s", dr, err)
 		w.Header().Add(misc.ContentTypeKey, misc.ContentTypeMarkdown)
 
-		_, err := w.Write([]byte(fmt.Sprintf("cannot marshal response %v. Falling back to text. Error: %s", ds, err)))
+		_, err := w.Write([]byte(fmt.Sprintf("cannot marshal response %v. Falling back to text. Error: %s", dr, err)))
 		if err != nil {
 			misc.Debugf("cannot send a response. Error: %s", err)
 		}
@@ -110,4 +166,100 @@ func DeleteCIBranch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		misc.Debugf("cannot send a response %v. Error: %s", marshalledStatus, err)
 	}
+}
+
+func Cleanupbranches(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	mergedOnly := v[misc.ApiMergeKey]
+	before := v[misc.ApiBeforeKey]
+	managers := github.GetAllManagers()
+	if managers == nil {
+		dr := NewDeleteResponse(fmt.Errorf("no GitHub managers have been initialized yet"))
+		reportError(w, r, dr, http.StatusAccepted)
+		return
+	}
+	var bt time.Time
+	if before == "" {
+		dr := NewDeleteResponse(fmt.Errorf("you have to pass before parameter in form of Unix time or RFC3339 date"))
+		reportError(w, r, dr, http.StatusNotAcceptable)
+		return
+	} else {
+		matchedUnix, err := regexp.MatchString("^[0-9]+$", before)
+		if err != nil {
+			reportError(w, r, NewDeleteResponse(fmt.Errorf("internal error. cannot compile regex for before time. Error: %w", err)), http.StatusInternalServerError)
+			return
+		}
+		if matchedUnix {
+			st, err := strconv.Atoi(before)
+
+			if err != nil {
+				reportError(w, r, NewDeleteResponse(fmt.Errorf("internal error. cannot convert unix before time %q to integer. Error: %w", before, err)), http.StatusNotAcceptable)
+				return
+			}
+			bt = time.Unix(int64(st), 0)
+		} else {
+			bt, err = time.Parse(time.RFC1123, before)
+			if err != nil {
+				reportError(w, r, NewDeleteResponse(fmt.Errorf("cannot parse ISO RFC1123 date %q. Error: %w", before, err)), http.StatusNotAcceptable)
+				return
+			}
+		}
+	}
+	var mo bool = true
+	mos := strings.TrimSpace(strings.ToLower(mergedOnly))
+	//By default only merged branches will be cleaned out
+	if mos == "no" || mos == "false" {
+		mo = false
+	}
+	dr := NewDeleteResponse(nil)
+
+	for _, m := range managers {
+
+		status, err := m.GetClient().CleanupBranches(&bt, mo)
+		if err != nil {
+			dr.SetRepoStatus(m.Repository, status, err)
+			//status[m.Repository] = &DeleteStatus{Deleted: false, Error: err}
+			misc.Debugf("failed to cleanup branches in repo %s. Error: %s", m.Repository, err)
+		} else {
+			dr.SetRepoStatus(m.Repository, status, nil)
+		}
+	}
+	marshalledStatus, err := json.Marshal(dr)
+	w.WriteHeader(http.StatusAccepted)
+	if err != nil {
+		misc.Debugf("cannot marshal response %v. Error: %s", dr, err)
+		w.Header().Add(misc.ContentTypeKey, misc.ContentTypeMarkdown)
+
+		_, err := w.Write([]byte(fmt.Sprintf("cannot marshal response %v. Falling back to text. Error: %s", dr, err)))
+		if err != nil {
+			misc.Debugf("cannot send a response. Error: %s", err)
+		}
+		return
+	}
+	w.Header().Add(misc.ContentTypeKey, misc.ContentTypeJson)
+	_, err = w.Write(marshalledStatus)
+	if err != nil {
+		misc.Debugf("cannot send a response %v. Error: %s", marshalledStatus, err)
+	}
+}
+
+func reportError(w http.ResponseWriter, r *http.Request, dr *DeleteResponse, status int) {
+	marshalledStatus, err := json.Marshal(dr)
+	w.WriteHeader(status)
+	if err != nil {
+		misc.Debugf("cannot marshal response %v. Error: %s", dr, err)
+		w.Header().Add(misc.ContentTypeKey, misc.ContentTypeMarkdown)
+
+		_, err := w.Write([]byte(fmt.Sprintf("cannot marshal response %v. Falling back to text. Error: %s", dr, err)))
+		if err != nil {
+			misc.Debugf("cannot send a response. Error: %s", err)
+		}
+		return
+	}
+	w.Header().Add(misc.ContentTypeKey, misc.ContentTypeJson)
+	_, err = w.Write(marshalledStatus)
+	if err != nil {
+		misc.Debugf("cannot send a response %v. Error: %s", marshalledStatus, err)
+	}
+	return
 }

@@ -56,6 +56,8 @@ const (
 	IssueLabelDesc        = "tfChek managed issue"
 	IssueAllFilter        = "all"
 	IdParam               = "Id"
+	ApiMergeKey           = "merged"
+	ApiBeforeKey          = "before"
 	ContentTypeKey        = "Content-Type"
 	ContentTypeJson       = "application/json"
 	ContentTypeMarkdown   = "text/markdown"
