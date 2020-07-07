@@ -26,6 +26,11 @@ type DeleteStatus struct {
 	ErrorMsg string `json:"error"`
 }
 
+type CleanupForm struct {
+	Before     string `json:"before"`
+	MergedOnly bool   `json:"merged"`
+}
+
 func NewDeleteResponse(err error) *DeleteResponse {
 	status := make(map[string]*DeleteStatus)
 	emsg := ""
@@ -148,7 +153,6 @@ func DeleteCIBranch(w http.ResponseWriter, r *http.Request) {
 			dr.SetRepoBranchStatus(m.Repository, branch, true, nil)
 		}
 	}
-	//ds := &DeleteResponse{Error: nil, Status: status}
 	marshalledStatus, err := json.Marshal(dr)
 	w.WriteHeader(http.StatusAccepted)
 	if err != nil {
@@ -169,9 +173,15 @@ func DeleteCIBranch(w http.ResponseWriter, r *http.Request) {
 }
 
 func Cleanupbranches(w http.ResponseWriter, r *http.Request) {
-	v := mux.Vars(r)
-	mergedOnly := v[misc.ApiMergeKey]
-	before := v[misc.ApiBeforeKey]
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	cf := &CleanupForm{}
+	err := dec.Decode(cf)
+	if err != nil {
+		misc.Debugf("could not parse json. Original message was: %v", r.Body)
+		reportError(w, r, NewDeleteResponse(fmt.Errorf("could not parse json. Original message was: %v. Error: %w", r.Body, err)), http.StatusNotAcceptable)
+		return
+	}
 	managers := github.GetAllManagers()
 	if managers == nil {
 		dr := NewDeleteResponse(fmt.Errorf("no GitHub managers have been initialized yet"))
@@ -179,43 +189,37 @@ func Cleanupbranches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var bt time.Time
-	if before == "" {
+	if cf.Before == "" {
 		dr := NewDeleteResponse(fmt.Errorf("you have to pass before parameter in form of Unix time or RFC3339 date"))
 		reportError(w, r, dr, http.StatusNotAcceptable)
 		return
 	} else {
-		matchedUnix, err := regexp.MatchString("^[0-9]+$", before)
+		matchedUnix, err := regexp.MatchString("^[0-9]+$", cf.Before)
 		if err != nil {
 			reportError(w, r, NewDeleteResponse(fmt.Errorf("internal error. cannot compile regex for before time. Error: %w", err)), http.StatusInternalServerError)
 			return
 		}
 		if matchedUnix {
-			st, err := strconv.Atoi(before)
+			st, err := strconv.Atoi(cf.Before)
 
 			if err != nil {
-				reportError(w, r, NewDeleteResponse(fmt.Errorf("internal error. cannot convert unix before time %q to integer. Error: %w", before, err)), http.StatusNotAcceptable)
+				reportError(w, r, NewDeleteResponse(fmt.Errorf("internal error. cannot convert unix before time %q to integer. Error: %w", cf.Before, err)), http.StatusNotAcceptable)
 				return
 			}
 			bt = time.Unix(int64(st), 0)
 		} else {
-			bt, err = time.Parse(time.RFC1123, before)
+			bt, err = time.Parse(time.RFC1123, cf.Before)
 			if err != nil {
-				reportError(w, r, NewDeleteResponse(fmt.Errorf("cannot parse ISO RFC1123 date %q. Error: %w", before, err)), http.StatusNotAcceptable)
+				reportError(w, r, NewDeleteResponse(fmt.Errorf("cannot parse ISO RFC1123 date %q. Error: %w", cf.Before, err)), http.StatusNotAcceptable)
 				return
 			}
 		}
-	}
-	var mo bool = true
-	mos := strings.TrimSpace(strings.ToLower(mergedOnly))
-	//By default only merged branches will be cleaned out
-	if mos == "no" || mos == "false" {
-		mo = false
 	}
 	dr := NewDeleteResponse(nil)
 
 	for _, m := range managers {
 
-		status, err := m.GetClient().CleanupBranches(&bt, mo)
+		status, err := m.GetClient().CleanupBranches(&bt, cf.MergedOnly)
 		if err != nil {
 			dr.SetRepoStatus(m.Repository, status, err)
 			//status[m.Repository] = &DeleteStatus{Deleted: false, Error: err}
