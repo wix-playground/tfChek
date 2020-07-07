@@ -65,15 +65,32 @@ func (c *ClientRunSH) deleteRef(ref string) error {
 }
 
 func (c *ClientRunSH) getBranchesList() ([]*github.Reference, error) {
-	listOptions := &github.ReferenceListOptions{Type: misc.TaskPrefix}
-	refs, response, err := c.client.Git.ListRefs(c.context, c.Owner, c.Repository, listOptions)
-	if err != nil {
-		if response != nil {
-			misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
+	var result []*github.Reference
+	listOptions := &github.ReferenceListOptions{ListOptions: github.ListOptions{PerPage: 600}}
+	for {
+		refs, response, err := c.client.Git.ListRefs(c.context, c.Owner, c.Repository, listOptions)
+		if err != nil {
+			if response != nil {
+				misc.Debugf("Response status %d %s. Body: %s", response.StatusCode, response.Status, response.Body)
+			}
+			return result, fmt.Errorf("cannot list branches by prefix %s, Error: %w", misc.TaskPrefix, err)
 		}
-		return nil, fmt.Errorf("cannot list branches by prefix %s, Error: %w", misc.TaskPrefix, err)
+		//Filter by prefix
+		if response.NextPage == 0 || response.LastPage == 0 {
+			break
+		}
+		if refs == nil || len(refs) == 0 {
+			break
+		}
+		for _, ref := range refs {
+			if strings.Contains(ref.GetRef(), misc.TaskPrefix) {
+				result = append(result, ref)
+			}
+		}
+
+		listOptions = &github.ReferenceListOptions{ListOptions: github.ListOptions{PerPage: 600, Page: response.NextPage}}
 	}
-	return refs, nil
+	return result, nil
 }
 
 func (c *ClientRunSH) getPRs() ([]*github.PullRequest, error) {
