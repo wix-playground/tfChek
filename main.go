@@ -80,31 +80,30 @@ func setupRoutes() *mux.Router {
 	middleware := authService.Middleware()
 	authRoutes, avatarRoutes := authService.Handlers()
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc(misc.WSRUNSH+"{Id}", api.RunShWebsocket).Name("Websocket").Methods("GET")
-	router.Path(misc.APIRUNSHIDQ + "{Hash}").Methods("GET").Name("Query by hash").HandlerFunc(api.GetTaskIdByHash)
-	//These 2 API endpoints are going to be removed
-	//router.Path(misc.APIRUNSH + "{Env}/{Layer}").Methods("GET").Name("Env/Layer").HandlerFunc(api.RunShEnvLayer)
-	//router.Path(misc.APIRUNSH + "{Env}").Methods("GET").Name("Env").HandlerFunc(api.RunShEnv)
-	router.Path(misc.APIRUNSH).Methods("POST").Name("run.sh universal task accepting endpoint").HandlerFunc(api.RunShPost)
-	router.Path(misc.APICANCEL + "{Id}").Methods("GET").Name("Cancel").HandlerFunc(api.Cancel)
-	router.Path(misc.WEBHOOKRUNSH).Methods("POST").Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
+	router.HandleFunc(misc.WSRUNSH+api.FormatIdParam(), api.RunShWebsocket).Name("Websocket").Methods(http.MethodGet)
+	router.Path(misc.APIRUNSHIDQ + "{Hash}").Methods(http.MethodGet).Name("Query by hash").HandlerFunc(api.GetTaskIdByHash)
+	router.Path(misc.APIRUNSH).Methods(http.MethodPost).Name("run.sh universal task accepting endpoint").HandlerFunc(api.RunShPost)
+	router.Path(misc.APICANCEL + api.FormatIdParam()).Methods(http.MethodGet).Name("Cancel").HandlerFunc(api.Cancel)
+	router.Path(misc.APIDELETEBRANCH + "{Id}").Methods(http.MethodDelete).Name("DeleteBranch").HandlerFunc(api.DeleteCIBranch)
+	router.Path(misc.APICLEANUPBRANCH).Methods(http.MethodPost).Name("Clean-up branches").HandlerFunc(api.Cleanupbranches)
+	router.Path(misc.WEBHOOKRUNSH).Methods(http.MethodPost).Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
 
 	router.Path(misc.HEALTHCHECK).HandlerFunc(api.HealthCheck)
-	router.Path(misc.AUTHINFO + "{Provider}").Name("Authentication info endpoint").Methods("GET").Handler(api.GetAuthInfoHandler())
+	router.Path(misc.AUTHINFO + "{Provider}").Name("Authentication info endpoint").Methods(http.MethodGet).Handler(api.GetAuthInfoHandler())
 	router.PathPrefix(misc.AVATARS).Name("Avatars").Handler(avatarRoutes)
 	router.PathPrefix(misc.AUTH).Name("Authentication endpoint").Handler(authRoutes)
 	router.Path(misc.READINESSCHECK).HandlerFunc(api.ReadinessCheck)
-	router.Path("/login").Methods("GET").Name("Login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Path("/login").Methods(http.MethodGet).Name("Login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "."+misc.STATICDIR+"login.html")
 	})
-	router.Path(misc.STATICDIR + "script/auth_provider.js").Methods("GET").Name("Login Script").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Path(misc.STATICDIR + "script/auth_provider.js").Methods(http.MethodGet).Name("Login Script").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "."+misc.STATICDIR+"script/auth_provider.js")
 	})
-	router.Path(misc.STATICDIR + "css/main.css").Methods("GET").Name("CSS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Path(misc.STATICDIR + "css/main.css").Methods(http.MethodGet).Name("CSS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "."+misc.STATICDIR+"css/main.css")
 	})
-	router.PathPrefix(misc.STATICDIR + "pictures").Name("Pictures").Methods("GET").Handler(http.StripPrefix(misc.STATICDIR+"pictures", http.FileServer(http.Dir("."+misc.STATICDIR+"pictures"))))
-	router.Path("/favicon.ico").Name("Icon").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.PathPrefix(misc.STATICDIR + "pictures").Name("Pictures").Methods(http.MethodGet).Handler(http.StripPrefix(misc.STATICDIR+"pictures", http.FileServer(http.Dir("."+misc.STATICDIR+"pictures"))))
+	router.Path("/favicon.ico").Name("Icon").Methods(http.MethodGet).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "."+misc.STATICDIR+"pictures/tfChek_logo.ico")
 	})
 	router.PathPrefix(misc.STATICDIR).Handler(middleware.Auth(http.StripPrefix(misc.STATICDIR, http.FileServer(http.Dir("."+misc.STATICDIR)))))

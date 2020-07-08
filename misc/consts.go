@@ -50,6 +50,17 @@ const (
 	GitSectionBranch      = "branch"
 	GitSectionOptionFetch = "fetch"
 	GitSectionOptionMerge = "merge"
+	ApiHashKey            = "Hash"
+	ApiBranchKey          = "branch"
+	IssueLabel            = APPNAME
+	IssueLabelDesc        = "tfChek managed issue"
+	IssueAllFilter        = "all"
+	IdParam               = "Id"
+	ApiMergeKey           = "merged"
+	ApiBeforeKey          = "before"
+	ContentTypeKey        = "Content-Type"
+	ContentTypeJson       = "application/json"
+	ContentTypeMarkdown   = "text/markdown"
 )
 
 const (
@@ -60,22 +71,25 @@ const (
 	STATICDIR   = "/static/"
 	WEBHOOKPATH = "/webhook/"
 
-	PORT           = 8085
-	APPNAME        = "tfChek"
-	runshchunk     = "runsh/"
-	hash512Query   = runshchunk + "by-sha512/"
-	APIV1          = "/api/v1/"
-	APIRUNSH       = APIV1 + runshchunk
-	APIRUNSHIDQ    = APIV1 + hash512Query
-	APICANCEL      = APIV1 + "cancel/"
-	WEBSOCKETPATH  = "/ws/"
-	WSRUNSH        = WEBSOCKETPATH + runshchunk
-	WEBHOOKRUNSH   = WEBHOOKPATH + runshchunk
-	HEALTHCHECK    = "/health/is_alive"
-	READINESSCHECK = "/health/is_ready"
-	AVATARS        = "/avatars"
-	AUTH           = "/auth"
-	AUTHINFO       = "/authinfo/"
+	PORT             = 8085
+	APPNAME          = "tfChek"
+	runshchunk       = "runsh/"
+	hash512Query     = runshchunk + "by-sha512/"
+	APIV1            = "/api/v1/"
+	APIV2            = "/api/v2/"
+	APIRUNSH         = APIV1 + runshchunk
+	APIRUNSHIDQ      = APIV1 + hash512Query
+	APICANCEL        = APIV1 + "cancel/"
+	APIDELETEBRANCH  = APIV2 + "delete/branch/"
+	APICLEANUPBRANCH = APIV2 + "cleanup"
+	WEBSOCKETPATH    = "/ws/"
+	WSRUNSH          = WEBSOCKETPATH + runshchunk
+	WEBHOOKRUNSH     = WEBHOOKPATH + runshchunk
+	HEALTHCHECK      = "/health/is_alive"
+	READINESSCHECK   = "/health/is_ready"
+	AVATARS          = "/avatars"
+	AUTH             = "/auth"
+	AUTHINFO         = "/authinfo/"
 )
 
 const NOOUTPUT = "---NO OUTPUT AVAILABLE---"
