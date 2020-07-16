@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/wix-system/tfChek/misc"
 	"io"
 	"os"
-	"tfChek/misc"
 )
 
 type Follower interface {

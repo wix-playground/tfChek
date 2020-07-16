@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfChek/storer"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"strconv"
 	"sync"
-	"tfChek/misc"
-	"tfChek/storer"
 	"time"
 )
 

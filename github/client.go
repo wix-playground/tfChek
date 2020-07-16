@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/go-github/v28/github"
+	"github.com/wix-system/tfChek/misc"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"log"
 	"strings"
-	"tfChek/misc"
 	"time"
 )
 import "golang.org/x/oauth2"

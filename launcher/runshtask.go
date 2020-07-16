@@ -8,16 +8,16 @@ import (
 	"github.com/acarl005/stripansi"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/git"
+	"github.com/wix-system/tfChek/github"
+	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfChek/storer"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
-	"tfChek/git"
-	"tfChek/github"
-	"tfChek/misc"
-	"tfChek/storer"
 )
 
 type RunShTask struct {
@@ -48,6 +48,7 @@ type RunShTask struct {
 /**
 This method has to return the git manager of the git repository, which contains executable script run.sh
 */
+//Deprecated
 func (rst *RunShTask) getFirstGitManager() (git.Manager, error) {
 	managers, err := rst.getGitManagers()
 	if err != nil {
@@ -123,11 +124,11 @@ func (rst *RunShTask) Done() error {
 			}
 			return err
 		}
-		for ghi, ghm := range gitManagers {
+		for gurl, _ := range gitManagers {
 			if viper.GetBool(misc.DebugKey) {
-				log.Printf("Processing GitHub manager %d of %d", ghi+1, len(gitManagers))
+				log.Printf("Processing GitHub manager of %s", gurl)
 			}
-			manager := github.GetManager(ghm.GetRemote())
+			manager := github.GetManager(gurl)
 			if manager != nil {
 				c := manager.GetChannel()
 				o := rst.GetCleanOut()
@@ -283,16 +284,13 @@ func (rst *RunShTask) prepareGit() error {
 	//create RUNSH_APTH here for launching run.sh
 	branch := fmt.Sprintf("%s%d", misc.TaskPrefix, rst.Id)
 	//Prehaps here I have to convert git url to ssh url (in form of "git@github.com:...")
-
-	//TODO: use map here!!!!!
-
 	gms, err := rst.getGitManagers()
 	if err != nil {
 		return err
 	}
 	gmwg := &sync.WaitGroup{}
 	errc := make(chan error)
-	for gi, gitman := range gms {
+	for gurl, gitman := range gms {
 		gmwg.Add(1)
 		go func(manager git.Manager, errChan chan<- error) {
 			defer gmwg.Done()
@@ -304,9 +302,8 @@ func (rst *RunShTask) prepareGit() error {
 				errChan <- fmt.Errorf("failed to wait for a webhook lock. Error: %w", err)
 				return
 			}
-			if viper.GetBool(misc.DebugKey) {
-				log.Printf("Preparing Git repo %d (%s) of %d", gi+1, manager.GetRemote(), len(rst.GitOrigins))
-			}
+			misc.Debugf("Preparing Git repo %s", gurl)
+
 			//Clone it if needed
 			if manager.IsCloned() {
 				err := manager.Open()
@@ -413,17 +410,17 @@ func (rst *RunShTask) UnlockWebhookRepoLock(fullName string) error {
 	return nil
 }
 
-func (rst *RunShTask) getGitManagers() ([]git.Manager, error) {
+func (rst *RunShTask) getGitManagers() (map[string]git.Manager, error) {
 	if len(rst.GitOrigins) == 0 {
 		return nil, errors.New(fmt.Sprintf("Cannot obtain a git manager. Task id %d contains no git remotes", rst.Id))
 	} else {
-		var managers []git.Manager
+		managers := make(map[string]git.Manager)
 		for _, gurl := range rst.GitOrigins {
 			gitman, err := git.GetManager(gurl, rst.StateLock)
 			if err != nil {
 				return nil, err
 			}
-			managers = append(managers, gitman)
+			managers[gurl] = gitman
 		}
 		return managers, nil
 	}
@@ -511,10 +508,12 @@ func (rst *RunShTask) Run() error {
 	}
 	cwd := gitman.GetPath()
 	//Copy certificates to the landscape directory of the git repository which contains run.sh. Usually it is the very first one
+	//TODO: Remove it after WTF integration
 	err = deliverCerts(cwd)
 	if err != nil {
 		log.Printf("Warning! Task id %d can fail, because certificates delivery failed. Error: %s", rst.Id, err)
 	}
+	//TODO: Remove it after WTF integration
 	err = deliverLambdas(cwd)
 	if err != nil {
 		log.Printf("Warning! Task id %d can fail, because lambdas delivery failed. Error: %s", rst.Id, err)

@@ -6,12 +6,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/api"
+	"github.com/wix-system/tfChek/github"
+	"github.com/wix-system/tfChek/launcher"
+	"github.com/wix-system/tfChek/misc"
 	"log"
 	"net/http"
-	"tfChek/api"
-	"tfChek/github"
-	"tfChek/launcher"
-	"tfChek/misc"
 )
 
 const (

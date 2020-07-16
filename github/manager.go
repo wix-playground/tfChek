@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"github.com/whilp/git-urls"
+	"github.com/wix-system/tfChek/misc"
 	"log"
 	"regexp"
 	"strconv"
 	"sync"
-	"tfChek/misc"
 )
 
 var ml sync.Mutex

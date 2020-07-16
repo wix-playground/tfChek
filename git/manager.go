@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/misc"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -15,7 +16,6 @@ import (
 	"path"
 	"strings"
 	"sync"
-	"tfChek/misc"
 	"time"
 )
 

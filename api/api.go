@@ -8,14 +8,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/launcher"
+	"github.com/wix-system/tfChek/misc"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
-	"tfChek/launcher"
-	"tfChek/misc"
 	"time"
 )
 import "gopkg.in/go-playground/webhooks.v5/github"
@@ -193,7 +193,7 @@ func RunShPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if viper.GetBool(misc.DebugKey) {
-		log.Printf("The posted command is './run.sh %s'", rgp.FullCommand)
+		log.Printf("The posted command is %q", rgp.FullCommand)
 		log.Printf("Parsed command struct %v", rgp)
 		log.Printf("Command computed hash %s", hash)
 	}

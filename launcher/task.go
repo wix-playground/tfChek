@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/misc"
 	"io"
 	"log"
 	"strconv"
 	"strings"
-	"tfChek/misc"
 	"time"
 )
 

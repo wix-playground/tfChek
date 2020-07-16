@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/wix-system/tfChek/github"
+	"github.com/wix-system/tfChek/misc"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
-	"tfChek/github"
-	"tfChek/misc"
 	"time"
 )
 

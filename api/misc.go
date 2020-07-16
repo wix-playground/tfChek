@@ -1,8 +1,8 @@
 package api
 
 import (
+	"github.com/wix-system/tfChek/launcher"
 	"net/http"
-	"tfChek/launcher"
 )
 
 func HealthCheck(w http.ResponseWriter, r *http.Request) {

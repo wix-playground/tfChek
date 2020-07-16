@@ -3,11 +3,11 @@ package storer
 import (
 	"fmt"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/misc"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
-	"tfChek/misc"
 )
 
 func GetTaskPath(id int) (string, error) {
