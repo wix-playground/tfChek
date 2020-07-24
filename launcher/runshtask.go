@@ -61,6 +61,7 @@ func (rst *RunShTask) getFirstGitManager() (git.Manager, error) {
 		}
 		return nil, errors.New(msg)
 	}
+	//TODO: fix this to fix managers map instead of an array
 	return (managers)[0], nil
 }
 
