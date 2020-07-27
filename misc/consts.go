@@ -33,6 +33,8 @@ const (
 	CertSourceKey         = "certs_source"
 	LambdaSourceKey       = "lambdas_source"
 	RunDirKey             = "run_dir"
+	RunshExe              = "run.sh"
+	WtfExe                = "wtf"
 	AvatarDir             = "avatar_dir"
 	GitHubClientId        = "github_cid"
 	GitHubClientSecret    = "github_cs"

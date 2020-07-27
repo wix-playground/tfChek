@@ -16,6 +16,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"sync"
 )
@@ -55,14 +56,56 @@ func (rst *RunShTask) getFirstGitManager() (git.Manager, error) {
 		return nil, err
 	}
 	if len(managers) == 0 {
-		msg := fmt.Sprintf("No git managers vere returned for task %d", rst.Id)
-		if viper.GetBool(misc.DebugKey) {
-			log.Print(msg)
-		}
-		return nil, errors.New(msg)
+		misc.Debugf("No git managers were returned for task %d", rst.Id)
+		return nil, fmt.Errorf("No git managers were returned for task %d", rst.Id)
 	}
-	//TODO: fix this to fix managers map instead of an array
-	return (managers)[0], nil
+	var mgr git.Manager = nil
+	for url, m := range managers {
+		p := m.GetPath()
+		runshPath := path.Join(p, misc.RunshExe)
+		info, err := os.Stat(runshPath)
+		if os.IsNotExist(err) {
+			misc.Debugf("repository %s does not contain %s executable. Trying next one...", runshPath, misc.RunshExe)
+			continue
+		}
+		if info.IsDir() {
+			misc.Debugf("%s cannot be directory, it should be an executable file. Trying next one...", runshPath)
+			continue
+		}
+		if info.Mode()&0111 == 0 {
+			misc.Debugf("file %s should be executable. Trying next one...")
+			continue
+		} else {
+			mgr = m
+			misc.Debugf("found %s executable in %s repository. Using it...", runshPath, url)
+		}
+	}
+	if mgr == nil {
+		for url, m := range managers {
+			p := m.GetPath()
+			wtfPath := path.Join(p, misc.WtfExe)
+			info, err := os.Stat(wtfPath)
+			if os.IsNotExist(err) {
+				misc.Debugf("repository %s does not contain %s executable. Trying next one...", wtfPath, misc.WtfExe)
+				continue
+			}
+			if info.IsDir() {
+				misc.Debugf("%s cannot be directory, it should be an executable file. Trying next one...", wtfPath)
+				continue
+			}
+			if info.Mode()&0111 == 0 {
+				misc.Debugf("file %s should be executable. Trying next one...")
+				continue
+			} else {
+				mgr = m
+				misc.Debugf("found %s executable in %s repository. Using it...", wtfPath, url)
+			}
+		}
+	}
+	if mgr == nil {
+		return nil, fmt.Errorf("failed to find repository with %s executable", misc.RunshExe)
+	}
+	return mgr, nil
 }
 
 func (rst *RunShTask) GetOrigins() *[]string {
@@ -411,6 +454,7 @@ func (rst *RunShTask) UnlockWebhookRepoLock(fullName string) error {
 	return nil
 }
 
+// Returns mapping of git manager to its URL
 func (rst *RunShTask) getGitManagers() (map[string]git.Manager, error) {
 	if len(rst.GitOrigins) == 0 {
 		return nil, errors.New(fmt.Sprintf("Cannot obtain a git manager. Task id %d contains no git remotes", rst.Id))
