@@ -382,19 +382,6 @@ func (rst *RunShTask) prepareGit() error {
 				errChan <- err
 				return
 			}
-
-			//err = manager.Checkout(branch)
-			//if err != nil {
-			//	log.Printf("Cannot checkout branch ")
-			//	errChan <- err
-			//	return
-			//}
-			//err = manager.Pull()
-			//if err != nil {
-			//	log.Printf("Cannot pull changes. Error: %s", err)
-			//	errChan <- err
-			//	return
-			//}
 		}(gitman, errc)
 	}
 	go func() {
@@ -456,6 +443,7 @@ func (rst *RunShTask) UnlockWebhookRepoLock(fullName string) error {
 
 // Returns mapping of git manager to its URL
 func (rst *RunShTask) getGitManagers() (map[string]git.Manager, error) {
+	//TODO: implement switching to GitHub API
 	if len(rst.GitOrigins) == 0 {
 		return nil, errors.New(fmt.Sprintf("Cannot obtain a git manager. Task id %d contains no git remotes", rst.Id))
 	} else {

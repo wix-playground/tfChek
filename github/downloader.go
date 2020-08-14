@@ -28,7 +28,6 @@ func DownloadRevision(manager *Manager, ref, dest string) error {
 	if !stat.IsDir() {
 		return fmt.Errorf("destination directory %s is not a directory", base)
 	}
-	//TODO create a temp file
 	zipFile, err := os.OpenFile(dest+".zip", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create zip file to store zip stream. Error: %w", err)
