@@ -1,14 +1,35 @@
 package github
 
+import "fmt"
+
 type RepoManager struct {
-	path      string
-	remote    string
-	cloned    bool
-	Reference string
+	path          string
+	remote        string
+	cloned        bool
+	Reference     string
+	githubManager *Manager
+}
+
+func NewRepomanager(path, remote string) *RepoManager {
+	rm := RepoManager{path: path, remote: remote}
+	rm.githubManager = GetManager(remote)
+	return &rm
 }
 
 func (r RepoManager) Checkout(ref string) error {
 	r.Reference = ref
+	if r.githubManager == nil {
+		//first try to obtain a new instance
+		r.githubManager = GetManager(r.remote)
+		if r.githubManager == nil {
+			return fmt.Errorf("cannot obtain an instance of Github manager")
+		}
+	}
+	err := DownloadRevision(r.githubManager, ref, r.path)
+	if err != nil {
+		return fmt.Errorf("failed to checkout revision %s Error: %w", ref, err)
+	}
+	return nil
 }
 
 func (r RepoManager) Pull() error {
