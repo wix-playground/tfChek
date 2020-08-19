@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/github"
 	"github.com/wix-system/tfChek/misc"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
@@ -155,7 +156,11 @@ func GetManager(url, state string) (Manager, error) {
 			repoName := urlChunks[len(urlChunks)-1]
 			path := strings.TrimRight(fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state), "/")
 			whl := make(map[string]chan string)
-			repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path, webhookLocks: whl}
+			if (viper.GetBool(misc.GitHubDownload)) {
+				repomngrs[key] = github.NewRepomanager(path,url, whl)
+			} else {
+				repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path, webhookLocks: whl}
+			}
 		}
 		lock.Unlock()
 	}

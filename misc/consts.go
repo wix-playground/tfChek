@@ -35,6 +35,7 @@ const (
 	RunDirKey             = "run_dir"
 	RunshExe              = "run.sh"
 	WtfExe                = "wtf"
+	GitHubDownload = "github_download"
 	AvatarDir             = "avatar_dir"
 	GitHubClientId        = "github_cid"
 	GitHubClientSecret    = "github_cs"
