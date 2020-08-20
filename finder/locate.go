@@ -3,10 +3,10 @@ package finder
 import (
 	"errors"
 	"fmt"
+	"github.com/wix-system/tfChek/misc"
 	"log"
 	"os"
 	"strings"
-	"tfChek/misc"
 )
 
 func LocateRepo(workdir string) (string, error) {

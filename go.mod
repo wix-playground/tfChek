@@ -11,6 +11,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.0.4 // indirect
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/go-git/go-git/v5 v5.1.0
 	github.com/go-pkgz/auth v0.9.0
 	github.com/google/go-github/v28 v28.1.1
 	github.com/gorilla/mux v1.7.3
@@ -31,7 +32,7 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/ugorji/go v1.1.4 // indirect
 	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
-	github.com/wix-system/tfResDif/v3 v3.5.0 // indirect
+	github.com/wix-system/tfResDif/v3 v3.6.8 // indirect
 	github.com/zclconf/go-cty v1.5.1 // indirect
 	go.mongodb.org/mongo-driver v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect
@@ -41,7 +42,6 @@ require (
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/text v0.3.3 // indirect
-	//github.com/wix-system/tfResDif v3.4.2
 	gopkg.in/go-playground/webhooks.v5 v5.13.0
 	gopkg.in/ini.v1 v1.57.0 // indirect
 	gopkg.in/oauth2.v3 v3.12.0 // indirect

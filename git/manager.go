@@ -3,13 +3,13 @@ package git
 import (
 	"errors"
 	"fmt"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	fConfig "github.com/go-git/go-git/v5/plumbing/format/config"
 	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/github"
 	"github.com/wix-system/tfChek/misc"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	gogitFormat "gopkg.in/src-d/go-git.v4/plumbing/format/config"
 	"io"
 	"io/ioutil"
 	"log"
@@ -156,8 +156,8 @@ func GetManager(url, state string) (Manager, error) {
 			repoName := urlChunks[len(urlChunks)-1]
 			path := strings.TrimRight(fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state), "/")
 			whl := make(map[string]chan string)
-			if (viper.GetBool(misc.GitHubDownload)) {
-				repomngrs[key] = github.NewRepomanager(path,url, whl)
+			if viper.GetBool(misc.GitHubDownload) {
+				repomngrs[key] = github.NewRepomanager(path, url, whl)
 			} else {
 				repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path, webhookLocks: whl}
 			}
@@ -537,7 +537,7 @@ func (b *BuiltInManager) trackBranch(remote, branch string) error {
 	remoteSubSection := remoteSection.Subsection(remote)
 	branchSection := rawConfig.Section(misc.GitSectionBranch)
 	remoteSubSection = remoteSubSection.AddOption(misc.GitSectionOptionFetch, refSpec.String())
-	remoteSection.Subsections = []*gogitFormat.Subsection{remoteSubSection}
+	remoteSection.Subsections = []*fConfig.Subsection{remoteSubSection}
 	rawConfig.Sections[1] = remoteSection
 	remConf := conf.Remotes[remote]
 	remConf.Fetch = append(remConf.Fetch, refSpec)
@@ -564,11 +564,11 @@ func (b *BuiltInManager) saveConfig(conf *config.Config) error {
 	return err
 }
 
-func createSubsectionForBranch(branch, remote string) *gogitFormat.Subsection {
+func createSubsectionForBranch(branch, remote string) *fConfig.Subsection {
 	ref := plumbing.NewBranchReferenceName(branch)
-	var opts []*gogitFormat.Option
-	opts = append(opts, &gogitFormat.Option{Key: misc.GitSectionRemote, Value: remote}, &gogitFormat.Option{Key: misc.GitSectionOptionMerge, Value: ref.String()})
-	s := &gogitFormat.Subsection{Name: branch, Options: gogitFormat.Options(opts)}
+	var opts []*fConfig.Option
+	opts = append(opts, &fConfig.Option{Key: misc.GitSectionRemote, Value: remote}, &fConfig.Option{Key: misc.GitSectionOptionMerge, Value: ref.String()})
+	s := &fConfig.Subsection{Name: branch, Options: fConfig.Options(opts)}
 	return s
 }
 
