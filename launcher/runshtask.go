@@ -443,7 +443,6 @@ func (rst *RunShTask) UnlockWebhookRepoLock(fullName string) error {
 
 // Returns mapping of git manager to its URL
 func (rst *RunShTask) getGitManagers() (map[string]git.Manager, error) {
-	//TODO: implement switching to GitHub API
 	if len(rst.GitOrigins) == 0 {
 		return nil, errors.New(fmt.Sprintf("Cannot obtain a git manager. Task id %d contains no git remotes", rst.Id))
 	} else {
@@ -515,19 +514,21 @@ func (rst *RunShTask) Run() error {
 	if rst.Status != misc.SCHEDULED {
 		return errors.New("cannot run unscheduled task")
 	}
-	//Perform git routines
-	err := rst.prepareGit()
-	if err != nil {
-		log.Printf("Cannot prepare git repositories. Error: %s", err)
-		rst.ForceFail()
-		return err
-	}
-	err = rst.prepareGitHub()
+	//Prepare github first
+	err := rst.prepareGitHub()
 	if err != nil {
 		log.Printf("Cannot prepare GitHub repositories. Error: %s", err)
 		rst.ForceFail()
 		return err
 	}
+	//Perform git routines
+	err = rst.prepareGit()
+	if err != nil {
+		log.Printf("Cannot prepare git repositories. Error: %s", err)
+		rst.ForceFail()
+		return err
+	}
+
 	//defer rst.outW.Close()
 	//defer rst.errW.Close()
 	//defer rst.inR.Close()

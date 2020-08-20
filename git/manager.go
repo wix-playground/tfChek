@@ -154,12 +154,16 @@ func GetManager(url, state string) (Manager, error) {
 		if repomngrs[key] == nil {
 			urlChunks := strings.Split(url, "/")
 			repoName := urlChunks[len(urlChunks)-1]
-			path := strings.TrimRight(fmt.Sprintf("%s/%s/%s", viper.GetString(misc.RepoDirKey), repoName, state), "/")
+			//Trim .git suffix
+			if strings.HasSuffix(repoName, ".git") {
+				repoName = strings.Replace(repoName, ".git", "", 1)
+			}
+			repoPath := path.Join(viper.GetString(misc.RepoDirKey), repoName, state)
 			whl := make(map[string]chan string)
 			if viper.GetBool(misc.GitHubDownload) {
-				repomngrs[key] = github.NewRepomanager(path, url, whl)
+				repomngrs[key] = github.NewRepomanager(repoPath, url, whl)
 			} else {
-				repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: path, webhookLocks: whl}
+				repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: repoPath, webhookLocks: whl}
 			}
 		}
 		lock.Unlock()

@@ -2,6 +2,7 @@ package github
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/misc"
 	"time"
 )
@@ -12,12 +13,24 @@ type RepoManager struct {
 	cloned        bool
 	Reference     string
 	githubManager *Manager
-	webhookLocks map[string]chan string
+	webhookLocks  map[string]chan string
 }
 
 func NewRepomanager(path, remote string, webhookLocks map[string]chan string) *RepoManager {
 	rm := RepoManager{path: path, remote: remote, webhookLocks: webhookLocks}
 	rm.githubManager = GetManager(remote)
+	if rm.githubManager == nil {
+		misc.Debugf("Retrying obtain of repository manager for %s - %s", remote, path)
+		repoOwner := viper.GetString(misc.RepoOwnerKey)
+		token := viper.GetString(misc.TokenKey)
+		InitManager(remote, repoOwner, token)
+		rm.githubManager = GetManager(remote)
+		if rm.githubManager == nil {
+			misc.Debugf("failed to obtain repository manager for %s - %s", remote, path)
+		} else {
+			misc.Debugf("successfully obtained repository manager for %s - %s", remote, path)
+		}
+	}
 	return &rm
 }
 
@@ -103,7 +116,7 @@ func (r RepoManager) WaitForWebhook(branch string, timeout int) error {
 			return fmt.Errorf("webhook lock for branch %s is nil", branch)
 		}
 	} else {
-		misc.Debugf("no lock for a branch %s in repo %s exists", branch,r.path)
+		misc.Debugf("no lock for a branch %s in repo %s exists", branch, r.path)
 		return fmt.Errorf("no lock for a branch %s in repo %s exists", branch, r.path)
 	}
 	return nil

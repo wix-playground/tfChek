@@ -23,6 +23,7 @@ func DownloadRevision(manager *Manager, ref, dest string) error {
 	base := path.Base(dest)
 	stat, err := os.Stat(base)
 	if os.IsNotExist(err) {
+		//TODO: try to create a directory in this case
 		return fmt.Errorf("destination directory %s does not exist", base)
 	}
 	if !stat.IsDir() {

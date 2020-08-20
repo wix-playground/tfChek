@@ -71,7 +71,7 @@ func GetManager(repository string) *Manager {
 	m := managers[repository]
 	if m == nil {
 		if viper.GetBool(misc.DebugKey) {
-			log.Printf("No GitHub manager for the repository %s. You might want to initialize this manager first")
+			log.Printf("No GitHub manager for the repository %s. You might want to initialize this manager first", repository)
 		}
 	}
 	return m
