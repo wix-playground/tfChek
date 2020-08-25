@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/misc"
+	"os"
 	"time"
 )
 
 type RepoManager struct {
 	path          string
+	basePath      string
 	remote        string
 	cloned        bool
 	Reference     string
@@ -17,7 +19,7 @@ type RepoManager struct {
 }
 
 func NewRepomanager(path, remote string, webhookLocks map[string]chan string) *RepoManager {
-	rm := RepoManager{path: path, remote: remote, webhookLocks: webhookLocks}
+	rm := RepoManager{path: path, remote: remote, webhookLocks: webhookLocks, basePath: path}
 	rm.githubManager = GetManager(remote)
 	if rm.githubManager == nil {
 		misc.Debugf("Retrying obtain of repository manager for %s - %s", remote, path)
@@ -34,7 +36,7 @@ func NewRepomanager(path, remote string, webhookLocks map[string]chan string) *R
 	return &rm
 }
 
-func (r RepoManager) Checkout(ref string) error {
+func (r *RepoManager) Checkout(ref string) error {
 	r.Reference = ref
 	if r.githubManager == nil {
 		//first try to obtain a new instance
@@ -43,14 +45,16 @@ func (r RepoManager) Checkout(ref string) error {
 			return fmt.Errorf("cannot obtain an instance of Github manager")
 		}
 	}
-	err := DownloadRevision(r.githubManager, ref, r.path)
+	extracted, err := DownloadRevision(r.githubManager, ref, r.basePath)
 	if err != nil {
 		return fmt.Errorf("failed to checkout revision %s Error: %w", ref, err)
 	}
+	misc.Debugf("successfully extracted repository root to %s", extracted)
+	r.path = extracted
 	return nil
 }
 
-func (r RepoManager) Pull() error {
+func (r *RepoManager) Pull() error {
 	if r.Reference == "" {
 		return r.Clone()
 	} else {
@@ -58,15 +62,31 @@ func (r RepoManager) Pull() error {
 	}
 }
 
-func (r RepoManager) SwitchTo(branch string) error {
+func (r *RepoManager) SwitchTo(branch string) error {
+	if branch == r.Reference {
+		return nil
+	}
+	stat, err := os.Stat(r.path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("cannot stat directory %s Error: %w", r.path, err)
+		}
+	} else {
+		if stat.IsDir() {
+			err := os.RemoveAll(r.path)
+			if err != nil {
+				return fmt.Errorf("failed to cleanup path %s Error: %w", r.path, err)
+			}
+		}
+	}
 	return r.Checkout(branch)
 }
 
-func (r RepoManager) Clone() error {
+func (r *RepoManager) Clone() error {
 	return r.Checkout("master")
 }
 
-func (r RepoManager) Open() error {
+func (r *RepoManager) Open() error {
 	//This is not needed for direct downloads
 	if r.cloned {
 		return nil
@@ -75,19 +95,19 @@ func (r RepoManager) Open() error {
 	}
 }
 
-func (r RepoManager) GetPath() string {
+func (r *RepoManager) GetPath() string {
 	return r.path
 }
 
-func (r RepoManager) GetRemote() string {
+func (r *RepoManager) GetRemote() string {
 	return r.remote
 }
 
-func (r RepoManager) IsCloned() bool {
+func (r *RepoManager) IsCloned() bool {
 	return r.cloned
 }
 
-func (r RepoManager) WaitForWebhook(branch string, timeout int) error {
+func (r *RepoManager) WaitForWebhook(branch string, timeout int) error {
 	if timeout < 0 {
 		return fmt.Errorf("timeout value cannot be negative")
 	}
@@ -122,7 +142,7 @@ func (r RepoManager) WaitForWebhook(branch string, timeout int) error {
 	return nil
 }
 
-func (r RepoManager) UnlockWebhookLock(branch string) error {
+func (r *RepoManager) UnlockWebhookLock(branch string) error {
 	if bl, ok := r.webhookLocks[branch]; ok {
 		bl <- branch
 		close(bl)
@@ -132,7 +152,7 @@ func (r RepoManager) UnlockWebhookLock(branch string) error {
 	return nil
 }
 
-func (r RepoManager) RegisterWebhookLock(branch string) error {
+func (r *RepoManager) RegisterWebhookLock(branch string) error {
 	if _, ok := r.webhookLocks[branch]; !ok {
 		r.webhookLocks[branch] = make(chan string, 1)
 		misc.Debugf("webhook lock for a branch %s in repo %s has been successfully registered", branch, r.path)

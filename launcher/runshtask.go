@@ -65,7 +65,7 @@ func (rst *RunShTask) getFirstGitManager() (git.Manager, error) {
 		runshPath := path.Join(p, misc.RunshExe)
 		info, err := os.Stat(runshPath)
 		if os.IsNotExist(err) {
-			misc.Debugf("repository %s does not contain %s executable. Trying next one...", runshPath, misc.RunshExe)
+			misc.Debugf("repository %s does not contain %s executable. Trying next one...", p, misc.RunshExe)
 			continue
 		}
 		if info.IsDir() {
