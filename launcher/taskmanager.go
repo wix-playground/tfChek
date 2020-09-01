@@ -149,11 +149,16 @@ func GetTaskManager() TaskManager {
 	if tm == nil {
 		tml.Lock()
 		if tm == nil {
-			tm = NewTaskManager()
+			tm = NewWtfTaskManager()
 		}
 		tml.Unlock()
 	}
 	return tm
+}
+
+func GetWtfTaskManager() WtfTaskManager {
+
+	return GetTaskManager().(WtfTaskManager)
 }
 
 func readSequence() int {

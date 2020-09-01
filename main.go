@@ -84,8 +84,10 @@ func setupRoutes() *mux.Router {
 	router.HandleFunc(misc.WSRUNSH+api.FormatIdParam(), api.RunShWebsocket).Name("Websocket").Methods(http.MethodGet)
 	router.Path(misc.APIRUNSHIDQ + "{Hash}").Methods(http.MethodGet).Name("Query by hash").HandlerFunc(api.GetTaskIdByHash)
 	router.Path(misc.APIRUNSH).Methods(http.MethodPost).Name("run.sh universal task accepting endpoint").HandlerFunc(api.RunShPost)
+	router.Path(misc.API2RUNSH).Methods(http.MethodPost).Name("run.sh universal task accepting endpoint").HandlerFunc(api.RunShPost)
+	router.Path(misc.APIWTF).Methods(http.MethodPost).Name("wtf task accepting endpoint").HandlerFunc(api.WtfPost)
 	router.Path(misc.APICANCEL + api.FormatIdParam()).Methods(http.MethodGet).Name("Cancel").HandlerFunc(api.Cancel)
-	router.Path(misc.APIDELETEBRANCH + "{Id}").Methods(http.MethodDelete).Name("DeleteBranch").HandlerFunc(api.DeleteCIBranch)
+	router.Path(misc.APIDELETEBRANCH + "{id}").Methods(http.MethodDelete).Name("DeleteBranch").HandlerFunc(api.DeleteCIBranch)
 	router.Path(misc.APICLEANUPBRANCH).Methods(http.MethodPost).Name("Clean-up branches").HandlerFunc(api.Cleanupbranches)
 	router.Path(misc.WEBHOOKRUNSH).Methods(http.MethodPost).Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
 

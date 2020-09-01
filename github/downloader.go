@@ -58,11 +58,6 @@ func DownloadRevision(manager *Manager, ref, dest string) (string, error) {
 		return "", fmt.Errorf("failed to extract archive from the web stream. Error: %w", err)
 	}
 	misc.Debugf("extracted reposoritory snapshot (ref: %s) to %s", ref, dest)
-	//checked, err := checkPath(dest)
-	//if err != nil {
-	//	return dest,err
-	//}
-	//return checked,nil
 	return container, nil
 }
 

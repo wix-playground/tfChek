@@ -35,7 +35,7 @@ const (
 	RunDirKey             = "run_dir"
 	RunshExe              = "run.sh"
 	WtfExe                = "wtf"
-	GitHubDownload = "github_download"
+	GitHubDownload        = "github_download"
 	AvatarDir             = "avatar_dir"
 	GitHubClientId        = "github_cid"
 	GitHubClientSecret    = "github_cs"
@@ -58,7 +58,7 @@ const (
 	IssueLabel            = APPNAME
 	IssueLabelDesc        = "tfChek managed issue"
 	IssueAllFilter        = "all"
-	IdParam               = "Id"
+	IdParam               = "id"
 	ApiMergeKey           = "merged"
 	ApiBeforeKey          = "before"
 	ContentTypeKey        = "Content-Type"
@@ -77,6 +77,7 @@ const (
 	PORT             = 8085
 	APPNAME          = "tfChek"
 	runshchunk       = "runsh/"
+	wtfchunk         = "wtf/"
 	hash512Query     = runshchunk + "by-sha512/"
 	APIV1            = "/api/v1/"
 	APIV2            = "/api/v2/"
@@ -85,6 +86,8 @@ const (
 	APICANCEL        = APIV1 + "cancel/"
 	APIDELETEBRANCH  = APIV2 + "delete/branch/"
 	APICLEANUPBRANCH = APIV2 + "cleanup"
+	APIWTF           = APIV2 + wtfchunk
+	API2RUNSH        = APIV2 + runshchunk
 	WEBSOCKETPATH    = "/ws/"
 	WSRUNSH          = WEBSOCKETPATH + runshchunk
 	WEBHOOKRUNSH     = WEBHOOKPATH + runshchunk
@@ -99,3 +102,4 @@ const NOOUTPUT = "---NO OUTPUT AVAILABLE---"
 
 //TODO: remove "production_42" hardcode
 const PROD42 = "production_42"
+const RG = "rg"

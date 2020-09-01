@@ -17,7 +17,6 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/hcl2 v0.0.0-20191002203319-fb75b3253c80 // indirect
-	github.com/maskimko/go-3ff v1.6.0 // indirect
 	github.com/mattn/go-colorable v0.1.7 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
@@ -30,9 +29,8 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	github.com/ugorji/go v1.1.4 // indirect
 	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
-	github.com/wix-system/tfResDif/v3 v3.6.8 // indirect
+	github.com/wix-system/tfResDif/v3 v3.7.4
 	github.com/zclconf/go-cty v1.5.1 // indirect
 	go.mongodb.org/mongo-driver v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect

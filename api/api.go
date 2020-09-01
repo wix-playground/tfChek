@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/launcher"
 	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfResDif/v3/apiv2"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -35,7 +36,7 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 
 	tm := launcher.GetTaskManager()
 	vars := mux.Vars(r)
-	id := vars["Id"]
+	id := vars["id"]
 	if id == "" {
 		erm := "Cannot run with no id"
 		log.Println(erm)
@@ -224,6 +225,49 @@ func RunShPost(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write([]byte(strconv.Itoa(bt.GetId())))
+		if err != nil {
+			log.Printf("Cannot write response. Error: %s", err)
+		}
+	}
+
+}
+
+func WtfPost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	var taskDef *apiv2.TaskDefinition
+	//for dec.More() {
+	err := dec.Decode(&taskDef)
+	if err != nil {
+		handleReqErr(err, w)
+		misc.Debugf("could not parse json")
+		return
+	}
+	misc.Debugf("the posted command is %q", taskDef.Context.FullCommand)
+	//misc.Debugf("parsed command struct %v", taskDef)
+	taskDef.Context.ExtraEnv["TFRESDIF_NOPB"] = "true"
+	//Explicitly disable notification of tfChek to avoid endless loop
+	taskDef.Context.ExtraEnv["NOTIFY_TFCHEK"] = "false"
+
+	//Register task
+	tm := launcher.GetWtfTaskManager()
+	tid, err := tm.AddWtfTask(taskDef)
+	if err != nil {
+		em := fmt.Sprintf("cannot create background task. Error: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		_, e := w.Write([]byte(em))
+		if e != nil {
+			log.Printf("cannot respond with message '%s' Error: %s", err, e)
+		}
+	} else {
+
+		w.WriteHeader(http.StatusCreated)
+		//TODO: Remove hardcode here (Perhaps task status should be returned as well. Need to discuss it)
+		sr := &apiv2.StatusResponse{TaskId: tid, Action: apiv2.StatusAction, Status: launcher.GetStatusString(misc.OPEN)}
+		respEncoder := json.NewEncoder(w)
+		err := respEncoder.Encode(sr)
+		//_, err = w.Write([]byte(strconv.Itoa(tid)))
 		if err != nil {
 			log.Printf("Cannot write response. Error: %s", err)
 		}
