@@ -30,7 +30,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
-	github.com/wix-system/tfResDif/v3 v3.7.4
+	github.com/wix-system/tfResDif/v3 v3.7.6
 	github.com/zclconf/go-cty v1.5.1 // indirect
 	go.mongodb.org/mongo-driver v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect

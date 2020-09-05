@@ -10,6 +10,7 @@ import (
 	"github.com/wix-system/tfChek/github"
 	"github.com/wix-system/tfChek/launcher"
 	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfResDif/v3/helpers"
 	"log"
 	"net/http"
 )
@@ -21,6 +22,11 @@ const (
 )
 
 func config() {
+
+	//Initialize configuration for wtf first
+	helpers.InitViper()
+	//Then rewrite it with tfChek keys
+
 	flag.Int(misc.PortKey, misc.PORT, "Port application will listen to")
 	flag.Bool(misc.DebugKey, false, "Print debug messages")
 	flag.String(misc.OutDirKey, "/var/tfChek/out/", "Directory to save output of the task runs")

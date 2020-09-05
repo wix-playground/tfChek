@@ -7,8 +7,12 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfChek/storer"
 	"github.com/wix-system/tfResDif/v3/apiv2"
+	"github.com/wix-system/tfResDif/v3/helpers"
+	"github.com/wix-system/tfResDif/v3/launcher"
 	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -108,6 +112,23 @@ func (tm *WtfTaskManagerImpl) AddWtfTask(payload *apiv2.TaskDefinition) (int, er
 	}
 	tid := task.GetId()
 	misc.Debugf("Task %d has been added", tid)
+	var sink helpers.DescriptorSink
+	sink, err = storer.NewTaskFileSink(tid)
+	if err != nil {
+		misc.Debugf("failed to create task file sink. Error: %s \nTrying to use standard out", err.Error())
+		sink = helpers.NewStandardSink()
+	}
+	signals := make(chan os.Signal)
+	wtfTaskLauncher := launcher.NewSinkSignallauncher(sink, signals)
+	task.context.Launcher = wtfTaskLauncher
+	task.context.DoGitUpdate = false
+	task.context.DoNotify = false
+	task.context.Debug = true
+	err = task.AddWebhookLocks()
+	if err != nil {
+		misc.Debugf("cannot add webhook locks for task %d", tid)
+		return tid, fmt.Errorf("cannot add webhook locks for task %d Error: %w", tid, err)
+	}
 	return tid, nil
 }
 
@@ -194,35 +215,33 @@ func (tm *WtfTaskManagerImpl) Close() error {
 }
 
 func (tm *WtfTaskManagerImpl) Start() error {
-	go tm.starter()
-	//Perhaps I should handle errors...
-	//TODO: implement readiness check
-	return nil
-}
-
-func (tm *WtfTaskManagerImpl) starter() error {
 	if tm.started {
 		return errors.New("dispatcher already has been Started")
 	}
-	started := make(map[string]bool)
-	for {
-		for s, tasks := range tm.threads {
-			if !started[s] {
-				go tm.runTasks(tasks)
-				started[s] = true
+
+	//TODO: implement readiness check
+	go func() {
+		started := make(map[string]bool)
+		for {
+			for s, tasks := range tm.threads {
+				if !started[s] {
+					go tm.runTasks(tasks)
+					started[s] = true
+				}
+			}
+			//Event sourcing
+			select {
+			case <-tm.stop:
+				for _, tasks := range tm.threads {
+					close(tasks)
+				}
+				break
+			default:
+				time.Sleep(time.Second)
 			}
 		}
-		//Event sourcing
-		select {
-		case <-tm.stop:
-			for _, tasks := range tm.threads {
-				close(tasks)
-			}
-			break
-		default:
-			time.Sleep(time.Second)
-		}
-	}
+	}()
+	return nil
 }
 
 func (tm *WtfTaskManagerImpl) runTasks(tasks <-chan Task) {

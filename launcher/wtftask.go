@@ -63,8 +63,8 @@ func (w *WtfTask) Run() error {
 	if err != nil {
 		return fmt.Errorf("failed to generate RUNSH_PATH for task %d. Error: %w", w.id, err)
 	}
-	//Disable recursive notification
-	w.context.ExtraEnv[misc.NotifyTfChekEnvVar] = "false"
+	w.context.DoNotify = false
+	w.context.DoGitUpdate = false
 
 	runtimeError := modes.TerraformMode(wtfmisc.TerraformMode, w.context)
 	if wtfmisc.CheckRuntimeError(runtimeError) {
