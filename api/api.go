@@ -63,7 +63,7 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	bt := tm.Get(taskId)
 	if bt == nil {
 		//Try to search for a completed tasks
-		err := writeCompletedTassToWS(w, r, taskId)
+		err := writeCompletedTaskToWS(w, r, taskId)
 		if err == nil {
 			return
 		}
@@ -82,7 +82,7 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if bt.GetStatus() == misc.DONE || bt.GetStatus() == misc.FAILED || bt.GetStatus() == misc.TIMEOUT {
-		err := writeCompletedTassToWS(w, r, taskId)
+		err := writeCompletedTaskToWS(w, r, taskId)
 		if err != nil {
 			misc.Debugf("Cannot display task %d output. Error: %s", bt.GetId(), err)
 		}
@@ -122,7 +122,7 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func writeCompletedTassToWS(w http.ResponseWriter, r *http.Request, taskId int) error {
+func writeCompletedTaskToWS(w http.ResponseWriter, r *http.Request, taskId int) error {
 	output, err := launcher.GetCompletedTaskOutput(taskId)
 	if err != nil {
 		return err
@@ -134,10 +134,6 @@ func writeCompletedTassToWS(w http.ResponseWriter, r *http.Request, taskId int) 
 	}
 	for _, line := range output {
 		_ = ws.WriteMessage(websocket.TextMessage, []byte(line))
-		//TODO: improve this spamming logging
-		//if err != nil {
-		//	misc.Debugf("Cannot write to websocket. Error: %s", err)
-		//}
 	}
 	return nil
 }

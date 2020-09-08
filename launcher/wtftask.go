@@ -3,15 +3,18 @@ package launcher
 import (
 	"bytes"
 	"fmt"
+	"github.com/acarl005/stripansi"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/git"
 	"github.com/wix-system/tfChek/github"
 	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfChek/storer"
 	"github.com/wix-system/tfResDif/v3/core"
 	wtfmisc "github.com/wix-system/tfResDif/v3/misc"
 	"github.com/wix-system/tfResDif/v3/modes"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -43,6 +46,7 @@ func (w *WtfTask) Run() error {
 	if w.status != misc.SCHEDULED {
 		return fmt.Errorf("cannot run unscheduled task")
 	}
+	w.status = misc.STARTED
 	//Prepare github first
 	err := w.prepareGitHub()
 	if err != nil {
@@ -68,7 +72,16 @@ func (w *WtfTask) Run() error {
 
 	runtimeError := modes.TerraformMode(wtfmisc.TerraformMode, w.context)
 	if wtfmisc.CheckRuntimeError(runtimeError) {
+		err := w.Fail()
+		if err != nil {
+			misc.Debugf("failed to set task %d status to failed. Error: %s", w.id, err)
+		}
 		return fmt.Errorf("Task failed. Error: %w", runtimeError)
+	} else {
+		err := w.Done()
+		if err != nil {
+			misc.Debugf("failed to set task %d status to failed. Error: %s", w.id, err)
+		}
 	}
 
 	upload2s3(w.id, w.status)
@@ -96,19 +109,50 @@ func (w *WtfTask) Subscribe() chan TaskStatus {
 }
 
 func (w *WtfTask) GetStdOut() io.Reader {
-	panic("implement me")
+	//TODO: Need closer
+	path, err := storer.GetTaskPath(w.id)
+	if err != nil {
+		misc.Debugf("cannot get task stdout. Error: %s", err)
+		return nil
+	}
+	taskFile, err := os.Open(path)
+	if err != nil {
+		misc.Debugf("cannot get task stdout. Error: %s", err)
+		return nil
+	}
+	return taskFile
 }
 
 func (w *WtfTask) GetCleanOut() string {
-	panic("implement me")
+
+	path, err := storer.GetTaskPath(w.id)
+	if err != nil {
+		misc.Debugf("cannot get task clean out. Error: %s", err)
+		return ""
+	}
+	taskFile, err := os.Open(path)
+	if err != nil {
+		misc.Debugf("cannot get task stdout. Error: %s", err)
+		return ""
+	}
+	defer taskFile.Close()
+	content, err := ioutil.ReadAll(taskFile)
+	if err != nil {
+		misc.Debugf("cannot get task stdout. failed to read file %s, Error: %s", path, err)
+		return ""
+	}
+
+	cleanOut := stripansi.Strip(string(content))
+	return strings.TrimSpace(cleanOut)
 }
 
 func (w *WtfTask) GetStdErr() io.Reader {
-	panic("implement me")
+	//Is not available in this implementation
+	return nil
 }
 
 func (w *WtfTask) GetStdIn() io.Writer {
-	panic("implement me")
+	return nil
 }
 
 func (w *WtfTask) GetStatus() TaskStatus {
