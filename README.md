@@ -93,3 +93,6 @@ Changelog
 
 *0.8.1*
 > Updated Dockerfile and make version output in server logs
+
+*0.9.0*
+> Integrated WTF into tfChek. Introduced APIv2
