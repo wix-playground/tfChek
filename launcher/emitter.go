@@ -5,9 +5,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfChek/storer"
 	"io"
-	"tfChek/misc"
-	"tfChek/storer"
 )
 
 func GetTaskLineReader(taskId int) (chan string, error) {

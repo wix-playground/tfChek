@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/otiai10/copy"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/misc"
 	"log"
 	"os"
 	"strings"
-	"tfChek/misc"
 )
 
 func normalizeGitRemotes(remotes *[]string) *[]string {
@@ -46,7 +46,9 @@ func prepend2normal(r string, normal *[]string) *[]string {
 This function copies certificates to landscape directory of run.sh git repo
 */
 //TODO: DRY
+//Deprecated
 func deliverLambdas(repo string) error {
+	misc.Debugf("delivering lambdas by tfChek. This is deprecated in favor of WTF implementation")
 	//Actually this has to be automated better than just copy certs from one dir to the repo dir each time it is needed
 	//By now this assumes that there must be a predeployed certificate source directory
 	lambdaDirectoryPath := strings.TrimSpace(viper.GetString(misc.LambdaSourceKey))
@@ -88,7 +90,9 @@ func deliverLambdas(repo string) error {
 /**
 This function copies certificates to landscape directory of run.sh git repo
 */
+//Deprecated
 func deliverCerts(repo string) error {
+	misc.Debugf("Delivering certificates by tfChek. This is deprecated")
 	//Actually this has to be automated better than just copy certs from one dir to the repo dir each time it is needed
 	//By now this assumes that there must be a predeployed certificate source directory
 	certDirectoryPath := strings.TrimSpace(viper.GetString(misc.CertSourceKey))

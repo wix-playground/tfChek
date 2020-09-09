@@ -8,10 +8,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/misc"
 	"log"
 	"os"
 	"path/filepath"
-	"tfChek/misc"
 )
 
 const providerName = "tfChek_custom_AWS_provider"

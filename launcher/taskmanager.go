@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfChek/storer"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"strconv"
 	"sync"
-	"tfChek/misc"
-	"tfChek/storer"
 	"time"
 )
 
@@ -149,11 +149,16 @@ func GetTaskManager() TaskManager {
 	if tm == nil {
 		tml.Lock()
 		if tm == nil {
-			tm = NewTaskManager()
+			tm = NewWtfTaskManager()
 		}
 		tml.Unlock()
 	}
 	return tm
+}
+
+func GetWtfTaskManager() WtfTaskManager {
+
+	return GetTaskManager().(WtfTaskManager)
 }
 
 func readSequence() int {

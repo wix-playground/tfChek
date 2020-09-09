@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/misc"
 	"io"
 	"log"
 	"strconv"
 	"strings"
-	"tfChek/misc"
 	"time"
 )
 
@@ -19,6 +19,26 @@ type TaskStatus uint8
 
 func (se *StateError) Error() string {
 	return se.msg
+}
+
+type Task interface {
+	Run() error
+	GetId() int
+	setId(id int)
+	Subscribe() chan TaskStatus
+	GetStdOut() io.Reader
+	GetCleanOut() string
+	GetStdErr() io.Reader
+	GetStdIn() io.Writer
+	GetStatus() TaskStatus
+	SetStatus(status TaskStatus)
+	SyncName() string
+	Schedule() error
+	Start() error
+	Done() error
+	Fail() error
+	ForceFail()
+	TimeoutFail() error
 }
 
 type GitHubAwareTask interface {
@@ -120,26 +140,6 @@ func (rc *RunSHLaunchConfig) GetTimeout() time.Duration {
 		}
 		return time.Duration(t) * time.Second
 	}
-}
-
-type Task interface {
-	Run() error
-	GetId() int
-	setId(id int)
-	Subscribe() chan TaskStatus
-	GetStdOut() io.Reader
-	GetCleanOut() string
-	GetStdErr() io.Reader
-	GetStdIn() io.Writer
-	GetStatus() TaskStatus
-	SetStatus(status TaskStatus)
-	SyncName() string
-	Schedule() error
-	Start() error
-	Done() error
-	Fail() error
-	ForceFail()
-	TimeoutFail() error
 }
 
 func GetStatusString(status TaskStatus) string {

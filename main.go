@@ -6,21 +6,27 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/wix-system/tfChek/api"
+	"github.com/wix-system/tfChek/github"
+	"github.com/wix-system/tfChek/launcher"
+	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-system/tfResDif/v3/helpers"
 	"log"
 	"net/http"
-	"tfChek/api"
-	"tfChek/github"
-	"tfChek/launcher"
-	"tfChek/misc"
 )
 
 const (
 	MajorVersion = 0
-	MinorVersion = 8
-	Revision     = 1
+	MinorVersion = 9
+	Revision     = 0
 )
 
 func config() {
+
+	//Initialize configuration for wtf first
+	helpers.InitViper()
+	//Then rewrite it with tfChek keys
+
 	flag.Int(misc.PortKey, misc.PORT, "Port application will listen to")
 	flag.Bool(misc.DebugKey, false, "Print debug messages")
 	flag.String(misc.OutDirKey, "/var/tfChek/out/", "Directory to save output of the task runs")
@@ -56,6 +62,7 @@ func config() {
 	viper.SetDefault(misc.UseExternalSequence, true)
 	viper.SetDefault(misc.WebhookWaitTimeoutKey, 180)
 	viper.SetDefault(misc.SkipPullFastForward, true) //TODO: set it to false when wtf is ready for fast forward pull of the branch
+	viper.SetDefault(misc.GitHubDownload, true)
 	viper.SetEnvPrefix(misc.EnvPrefix)
 	viper.AutomaticEnv()
 	viper.SetConfigName(misc.APPNAME)
@@ -83,8 +90,10 @@ func setupRoutes() *mux.Router {
 	router.HandleFunc(misc.WSRUNSH+api.FormatIdParam(), api.RunShWebsocket).Name("Websocket").Methods(http.MethodGet)
 	router.Path(misc.APIRUNSHIDQ + "{Hash}").Methods(http.MethodGet).Name("Query by hash").HandlerFunc(api.GetTaskIdByHash)
 	router.Path(misc.APIRUNSH).Methods(http.MethodPost).Name("run.sh universal task accepting endpoint").HandlerFunc(api.RunShPost)
+	router.Path(misc.API2RUNSH).Methods(http.MethodPost).Name("run.sh universal task accepting endpoint").HandlerFunc(api.RunShPost)
+	router.Path(misc.APIWTF).Methods(http.MethodPost).Name("wtf task accepting endpoint").HandlerFunc(api.WtfPost)
 	router.Path(misc.APICANCEL + api.FormatIdParam()).Methods(http.MethodGet).Name("Cancel").HandlerFunc(api.Cancel)
-	router.Path(misc.APIDELETEBRANCH + "{Id}").Methods(http.MethodDelete).Name("DeleteBranch").HandlerFunc(api.DeleteCIBranch)
+	router.Path(misc.APIDELETEBRANCH + "{id}").Methods(http.MethodDelete).Name("DeleteBranch").HandlerFunc(api.DeleteCIBranch)
 	router.Path(misc.APICLEANUPBRANCH).Methods(http.MethodPost).Name("Clean-up branches").HandlerFunc(api.Cleanupbranches)
 	router.Path(misc.WEBHOOKRUNSH).Methods(http.MethodPost).Name("GitHub web hook").HandlerFunc(api.RunShWebHook)
 

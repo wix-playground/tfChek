@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/go-github/v28/github"
+	"github.com/wix-system/tfChek/misc"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"io/ioutil"
 	"log"
+	"net/url"
 	"strings"
-	"tfChek/misc"
 	"time"
 )
 import "golang.org/x/oauth2"
@@ -25,6 +27,7 @@ type Client interface {
 	//TODO: add cleanup Issues capability
 	//DeleteIssue()
 	//CleanupIssues()
+	GetArchiveLink(ref string) (*url.URL, error)
 }
 
 type ClientRunSH struct {
@@ -32,6 +35,25 @@ type ClientRunSH struct {
 	Owner      string
 	client     *github.Client
 	context    context.Context
+}
+
+func (c *ClientRunSH) GetArchiveLink(ref string) (*url.URL, error) {
+	rcgo := &github.RepositoryContentGetOptions{
+		Ref: ref,
+	}
+	link, response, err := c.client.Repositories.GetArchiveLink(c.context, c.Owner, c.Repository, github.Zipball, rcgo)
+	if err != nil {
+		var resp string
+		body, rerr := ioutil.ReadAll(response.Body)
+		if rerr != nil {
+			resp = fmt.Sprintf("cannot read response. Error: %s", rerr.Error())
+		} else {
+			resp = string(body)
+		}
+		misc.Debugf("failed to get archive download link. Status: %d (%s) Details %s", response.StatusCode, response.Status, resp)
+		return nil, fmt.Errorf("failed to get archive link. Error: %w", err)
+	}
+	return link, nil
 }
 
 func wrapComment(data string) *string {
