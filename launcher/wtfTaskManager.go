@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/misc"
 	"github.com/wix-system/tfChek/storer"
+	"github.com/wix-system/tfChek/tfChekLog"
 	"github.com/wix-system/tfResDif/v3/apiv2"
 	"github.com/wix-system/tfResDif/v3/helpers"
 	"github.com/wix-system/tfResDif/v3/launcher"
@@ -118,12 +119,14 @@ func (tm *WtfTaskManagerImpl) AddWtfTask(payload *apiv2.TaskDefinition) (int, er
 		misc.Debugf("failed to create task file sink. Error: %s \nTrying to use standard out", err.Error())
 		sink = helpers.NewStandardSink()
 	}
+	logger := tfChekLog.NewTaskLogger(tid, sink.GetStdErr())
 	signals := make(chan os.Signal)
-	wtfTaskLauncher := launcher.NewSinkSignallauncher(sink, signals)
+	wtfTaskLauncher := launcher.NewSinkSignallauncher(sink, signals, logger)
 	task.context.Launcher = wtfTaskLauncher
 	task.context.DoGitUpdate = false
 	task.context.DoNotify = false
 	task.context.Debug = true
+	task.context.Logger = logger
 	err = task.AddWebhookLocks()
 	if err != nil {
 		misc.Debugf("cannot add webhook locks for task %d", tid)

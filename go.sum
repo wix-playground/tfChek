@@ -615,6 +615,10 @@ github.com/wix-system/tfResDif/v3 v3.7.5 h1:0TkAqptR/haSfhw4KzCcfF7E0IV5fm0xwb82
 github.com/wix-system/tfResDif/v3 v3.7.5/go.mod h1:QK75JQz++IgpVCdtLNa4FsLsdZOhK2zvwa4NKTGVBjY=
 github.com/wix-system/tfResDif/v3 v3.7.6 h1:L1Q/WzNJzx7lzdUCZ8SoxqfunYLvfApWbu949XlVyDI=
 github.com/wix-system/tfResDif/v3 v3.7.6/go.mod h1:QK75JQz++IgpVCdtLNa4FsLsdZOhK2zvwa4NKTGVBjY=
+github.com/wix-system/tfResDif/v3 v3.8.0 h1:68ztrYx4j303wyde+r5SgDmPABc71E+4KgH8GdLTMxk=
+github.com/wix-system/tfResDif/v3 v3.8.0/go.mod h1:QK75JQz++IgpVCdtLNa4FsLsdZOhK2zvwa4NKTGVBjY=
+github.com/wix-system/tfResDif/v3 v3.8.1 h1:wj1MQsYGbvHnnN1udqgXthN7xsPlPsTOPbUQeYrLXd0=
+github.com/wix-system/tfResDif/v3 v3.8.1/go.mod h1:QK75JQz++IgpVCdtLNa4FsLsdZOhK2zvwa4NKTGVBjY=
 github.com/xanzy/ssh-agent v0.2.1 h1:TCbipTQL2JiiCprBWx9frJ2eJlCYT00NmctrHxVAr70=
 github.com/xanzy/ssh-agent v0.2.1/go.mod h1:mLlQY/MoOhWBj+gOGMQkOeiEvkx+8pJSI+0Bx9h2kr4=
 github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c h1:u40Z8hqBAAQyv+vATcGgV0YCnDjqSL7/q/JyPhhJSPk=

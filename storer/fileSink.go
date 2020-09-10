@@ -2,7 +2,7 @@ package storer
 
 import (
 	"fmt"
-	"github.com/wix-system/tfResDif/v3/helpers"
+	"github.com/wix-system/tfResDif/v3/wtflog"
 	"io"
 )
 
@@ -27,12 +27,12 @@ func (f *TaskFileSink) GetStdIn() io.Reader {
 func (f *TaskFileSink) Close() {
 	err := f.out.Close()
 	if err != nil {
-		helpers.Debugf("cannot close sink standard out for task %d", f.tid)
+		wtflog.GetLogger().Debugf("cannot close sink standard out for task %d", f.tid)
 	}
 	if f.err != f.out {
 		err = f.err.Close()
 		if err != nil {
-			helpers.Debugf("cannot close sink standard err for task %d", f.tid)
+			wtflog.GetLogger().Debugf("cannot close sink standard err for task %d", f.tid)
 		}
 	}
 }

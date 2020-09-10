@@ -27,13 +27,6 @@ var upgrader = websocket.Upgrader{
 }
 
 func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
-	//Debug websocket
-	//log.Printf("Request %s headers:", r.URL.String())
-	//for k, v := range r.Header {
-	//	log.Printf("\tHeader field %q, Value %q\n", k, v)
-	//}
-	//End Debug
-
 	tm := launcher.GetTaskManager()
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -75,10 +68,6 @@ func RunShWebsocket(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("Cannot post error message '%s' Error: %s", erm, err)
 		}
-		//err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Cannot find task by id: %d", taskId)))
-		//if err != nil {
-		//	log.Printf("Cannot find task by id: %d Error: %s", taskId, err)
-		//}
 		return
 	}
 	if bt.GetStatus() == misc.DONE || bt.GetStatus() == misc.FAILED || bt.GetStatus() == misc.TIMEOUT {
@@ -241,10 +230,10 @@ func WtfPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	misc.Debugf("the posted command is %q", taskDef.Context.FullCommand)
-	//misc.Debugf("parsed command struct %v", taskDef)
-	taskDef.Context.ExtraEnv["TFRESDIF_NOPB"] = "true"
-	//Explicitly disable notification of tfChek to avoid endless loop
-	taskDef.Context.ExtraEnv["NOTIFY_TFCHEK"] = "false"
+	////misc.Debugf("parsed command struct %v", taskDef)
+	//taskDef.Context.ExtraEnv["TFRESDIF_NOPB"] = "true"
+	////Explicitly disable notification of tfChek to avoid endless loop
+	//taskDef.Context.ExtraEnv["NOTIFY_TFCHEK"] = "false"
 
 	//Register task
 	tm := launcher.GetWtfTaskManager()
