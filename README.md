@@ -96,3 +96,6 @@ Changelog
 
 *0.9.0*
 > Integrated WTF into tfChek. Introduced APIv2
+
+*0.9.1*
+> Can list old tasks from S3

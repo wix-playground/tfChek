@@ -75,7 +75,6 @@ func GetTaskLineReader(taskId int) (chan string, error) {
 	return output, nil
 }
 
-//TODO: implement SNP-612
 func GetCompletedTaskOutput(taskId int) ([]string, error) {
 	return getCompletedTaskOutput(taskId, true)
 }
