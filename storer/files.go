@@ -46,18 +46,18 @@ func ReadTask(id int) ([]byte, error) {
 	dir := viper.GetString(misc.OutDirKey)
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
-		misc.Debugf("Directory with stored tasks does not exist. Error: %s", err)
+		misc.Debugf("directory with stored tasks does not exist. Error: %s", err)
 		return nil, err
 	}
 	f, err := os.Open(getTaskPath(dir, id))
 	if err != nil {
-		misc.Debugf("Cannot find task %d log. Error: %s", id, err)
+		misc.Debugf("cannot find task %d log. Error: %s", id, err)
 		return nil, err
 	}
 	defer f.Close()
 	data, err := ioutil.ReadAll(f)
 	if err != nil {
-		misc.Debugf("Cannot read data from the task log. Error %s", err)
+		misc.Debugf("cannot read data from the task log. Error %s", err)
 	}
 	return data, err
 }

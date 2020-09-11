@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/misc"
@@ -26,21 +27,16 @@ func S3UploadTaskWithSuffix(bucket string, id int, suffix *string) error {
 	filename := getTaskPath(dir, id)
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Println("Failed to open file for upload to S3 bucket", filename, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to open file %s for upload to S3 bucket. Error: %w", filename, err)
 	}
 	defer file.Close()
 
 	credentialsProvider, err := getCredentialsProvider()
 	if err != nil {
-		if viper.GetBool(misc.DebugKey) {
-			log.Printf("Could not obtain AWS credentials provider. Error: %s", err)
-		}
+		misc.Debugf("could not obtain AWS credentials provider. Error: %s", err)
 		return err
 	}
-	if viper.GetBool(misc.DebugKey) {
-		log.Printf("obtained AWS credentials provider")
-	}
+	misc.Debug("obtained AWS credentials provider")
 	creds := credentials.NewCredentials(credentialsProvider)
 	conf := aws.Config{
 		Region:      aws.String(awsRegion),
@@ -87,4 +83,64 @@ func getCredentialsProvider() (credentials.Provider, error) {
 	secretValue := credentials.Value{AccessKeyID: ak, SecretAccessKey: sk, ProviderName: providerName}
 	provider := credentials.StaticProvider{secretValue}
 	return &provider, nil
+}
+
+func S3DownloadTask(bucket string, id int) error {
+	return S3DownloadTaskWithSuffix(bucket, id, nil)
+}
+
+func S3DownloadTaskWithSuffix(bucket string, id int, suffix *string) error {
+	awsRegion := viper.GetString(misc.AWSRegion)
+	dir := viper.GetString(misc.OutDirKey)
+	ds, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(dir, 0775)
+		if err != nil {
+			misc.Debugf("cannot create directory to store task output files. Error: %s", err)
+			return fmt.Errorf("cannot create directory to store task output files. Error: %w", err)
+		}
+	}
+	if !ds.IsDir() {
+		return fmt.Errorf("%s is not a directory. Cannot save task %d output", dir, id)
+	}
+	filename := getTaskPath(dir, id)
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s for upload to S3 bucket. Error: %w", filename, err)
+	}
+	defer file.Close()
+	key := filepath.Base(filename)
+	if suffix != nil {
+		key = fmt.Sprintf("%s-%s", key, *suffix)
+	}
+	credentialsProvider, err := getCredentialsProvider()
+	if err != nil {
+		misc.Debugf("could not obtain AWS credentials provider. Error: %s", err)
+		return fmt.Errorf("could not obtain AWS credentials provider. Error: %w", err)
+	}
+	misc.Debug("obtained AWS credentials provider")
+	creds := credentials.NewCredentials(credentialsProvider)
+	conf := aws.Config{
+		Region:      aws.String(awsRegion),
+		Credentials: creds,
+	}
+	client, err := session.NewSession(&conf)
+	if err != nil {
+		misc.Debugf("failed to obtain AWS client. Error: %s", err)
+		return fmt.Errorf("failed to obtain AWS client. Error: %w", err)
+	}
+	downloader := s3manager.NewDownloader(client)
+	input := &s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)}
+	n, err := downloader.Download(file, input)
+	if err != nil {
+		misc.Debugf("cannot download from S3. Error: %s", err)
+		misc.Debugf("removing file %s after unsuccessful download", filename)
+		ferr := os.Remove(filename)
+		if ferr != nil {
+			misc.Debugf("failed to remove %s Error: %s", filename, err)
+		}
+		return fmt.Errorf("cannot download from S3. Error: %w", err)
+	}
+	misc.Debugf("successfully downloaded %d bytes to %s\n", n, filename)
+	return nil
 }
