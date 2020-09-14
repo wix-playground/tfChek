@@ -1,7 +1,6 @@
 package storer
 
 import (
-	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -68,68 +67,22 @@ func S3UploadTaskWithSuffix(bucket string, id int, suffix *string) error {
 	return nil
 }
 
-func getCredentialsProvider() (credentials.Provider, error) {
-
-	//NOTE: Prehaps it worth here to falback to shared credentials provider
-	ak := viper.GetString(misc.AWSAccessKey)
-	if len(ak) == 0 {
-		return nil, errors.New("AWS access key was not configured")
-	}
-	sk := viper.GetString(misc.AWSSecretKey)
-	if len(sk) == 0 {
-		return nil, errors.New("AWS secret key was not configured")
-	}
-
-	secretValue := credentials.Value{AccessKeyID: ak, SecretAccessKey: sk, ProviderName: providerName}
-	provider := credentials.StaticProvider{secretValue}
-	return &provider, nil
-}
-
 func S3DownloadTask(bucket string, id int) error {
 	return S3DownloadTaskWithSuffix(bucket, id, nil)
 }
 
 func S3DownloadTaskWithSuffix(bucket string, id int, suffix *string) error {
-	awsRegion := viper.GetString(misc.AWSRegion)
-	dir := viper.GetString(misc.OutDirKey)
-	ds, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(dir, 0775)
-		if err != nil {
-			misc.Debugf("cannot create directory to store task output files. Error: %s", err)
-			return fmt.Errorf("cannot create directory to store task output files. Error: %w", err)
-		}
-	}
-	if !ds.IsDir() {
-		return fmt.Errorf("%s is not a directory. Cannot save task %d output", dir, id)
-	}
-	filename := getTaskPath(dir, id)
-	file, err := os.Create(filename)
+
+	filename, file, err := s3PrepareDir(id)
 	if err != nil {
-		return fmt.Errorf("failed to open file %s for upload to S3 bucket. Error: %w", filename, err)
+		return fmt.Errorf("failed to prepare output directory. Error: %w", err)
 	}
-	defer file.Close()
-	key := filepath.Base(filename)
-	if suffix != nil {
-		key = fmt.Sprintf("%s-%s", key, *suffix)
-	}
-	credentialsProvider, err := getCredentialsProvider()
+	key := s3PrepareKey(filename, suffix)
+	downloader, err := s3PrepareDownloader()
 	if err != nil {
-		misc.Debugf("could not obtain AWS credentials provider. Error: %s", err)
-		return fmt.Errorf("could not obtain AWS credentials provider. Error: %w", err)
+		return fmt.Errorf("failed to prepare S3 downloader. Error: %w", err)
 	}
-	misc.Debug("obtained AWS credentials provider")
-	creds := credentials.NewCredentials(credentialsProvider)
-	conf := aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: creds,
-	}
-	client, err := session.NewSession(&conf)
-	if err != nil {
-		misc.Debugf("failed to obtain AWS client. Error: %s", err)
-		return fmt.Errorf("failed to obtain AWS client. Error: %w", err)
-	}
-	downloader := s3manager.NewDownloader(client)
+
 	input := &s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)}
 	n, err := downloader.Download(file, input)
 	if err != nil {
