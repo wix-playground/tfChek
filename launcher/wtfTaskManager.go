@@ -35,7 +35,6 @@ type WtfTaskManagerImpl struct {
 	tasks          map[int]Task
 	//Deprecated
 	taskHashes map[string]int
-	saveRuns   bool
 }
 
 func NewWtfTaskManager() TaskManager {
@@ -45,7 +44,6 @@ func NewWtfTaskManager() TaskManager {
 		threads:    make(map[string]chan Task),
 		cancel:     make(map[int]context.CancelFunc),
 		tasks:      make(map[int]Task),
-		saveRuns:   !viper.GetBool(misc.DismissOutKey),
 		taskHashes: make(map[string]int),
 	}
 }
@@ -75,7 +73,9 @@ func (tm *WtfTaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task
 	//inPipeReader, inPipeWriter := io.Pipe()
 
 	t := &RunShTask{Command: command, Args: args, Context: ctx,
-		Status: misc.OPEN, save: tm.saveRuns,
+		Status: misc.OPEN,
+		//Always save runs to the out dir
+		save:      true,
 		Socket:    make(chan *websocket.Conn),
 		StateLock: fmt.Sprintf("%s/%s", rcs.Env, rcs.Layer),
 		//out:       outPipeReader, err: errPipeReader, in: inPipeWriter,

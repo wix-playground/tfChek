@@ -46,7 +46,6 @@ type TaskManagerImpl struct {
 	cancel         map[int]context.CancelFunc
 	tasks          map[int]Task
 	taskHashes     map[string]int
-	saveRuns       bool
 }
 
 func (tm *TaskManagerImpl) Cancel(id int) error {
@@ -73,7 +72,9 @@ func (tm *TaskManagerImpl) AddRunSh(rcs *RunShCmd, ctx context.Context) (Task, e
 	//inPipeReader, inPipeWriter := io.Pipe()
 
 	t := &RunShTask{Command: command, Args: args, Context: ctx,
-		Status: misc.OPEN, save: tm.saveRuns,
+		Status: misc.OPEN,
+		//Always save task output to the out dir
+		save:      true,
 		Socket:    make(chan *websocket.Conn),
 		StateLock: fmt.Sprintf("%s/%s", rcs.Env, rcs.Layer),
 		//out:       outPipeReader, err: errPipeReader, in: inPipeWriter,
@@ -261,7 +262,6 @@ func NewTaskManager() TaskManager {
 		threads:    make(map[string]chan Task),
 		cancel:     make(map[int]context.CancelFunc),
 		tasks:      make(map[int]Task),
-		saveRuns:   !viper.GetBool(misc.DismissOutKey),
 		taskHashes: make(map[string]int),
 	}
 }
