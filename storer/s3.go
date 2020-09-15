@@ -1,11 +1,11 @@
 package storer
 
 import (
-	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/spf13/viper"
 	"github.com/wix-system/tfChek/misc"
@@ -26,21 +26,16 @@ func S3UploadTaskWithSuffix(bucket string, id int, suffix *string) error {
 	filename := getTaskPath(dir, id)
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Println("Failed to open file for upload to S3 bucket", filename, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to open file %s for upload to S3 bucket. Error: %w", filename, err)
 	}
 	defer file.Close()
 
 	credentialsProvider, err := getCredentialsProvider()
 	if err != nil {
-		if viper.GetBool(misc.DebugKey) {
-			log.Printf("Could not obtain AWS credentials provider. Error: %s", err)
-		}
+		misc.Debugf("could not obtain AWS credentials provider. Error: %s", err)
 		return err
 	}
-	if viper.GetBool(misc.DebugKey) {
-		log.Printf("obtained AWS credentials provider")
-	}
+	misc.Debug("obtained AWS credentials provider")
 	creds := credentials.NewCredentials(credentialsProvider)
 	conf := aws.Config{
 		Region:      aws.String(awsRegion),
@@ -72,19 +67,33 @@ func S3UploadTaskWithSuffix(bucket string, id int, suffix *string) error {
 	return nil
 }
 
-func getCredentialsProvider() (credentials.Provider, error) {
+func S3DownloadTask(bucket string, id int) error {
+	return S3DownloadTaskWithSuffix(bucket, id, nil)
+}
 
-	//NOTE: Prehaps it worth here to falback to shared credentials provider
-	ak := viper.GetString(misc.AWSAccessKey)
-	if len(ak) == 0 {
-		return nil, errors.New("AWS access key was not configured")
+func S3DownloadTaskWithSuffix(bucket string, id int, suffix *string) error {
+
+	filename, file, err := s3PrepareDir(id)
+	if err != nil {
+		return fmt.Errorf("failed to prepare output directory. Error: %w", err)
 	}
-	sk := viper.GetString(misc.AWSSecretKey)
-	if len(sk) == 0 {
-		return nil, errors.New("AWS secret key was not configured")
+	key := s3PrepareKey(filename, suffix)
+	downloader, err := s3PrepareDownloader()
+	if err != nil {
+		return fmt.Errorf("failed to prepare S3 downloader. Error: %w", err)
 	}
 
-	secretValue := credentials.Value{AccessKeyID: ak, SecretAccessKey: sk, ProviderName: providerName}
-	provider := credentials.StaticProvider{secretValue}
-	return &provider, nil
+	input := &s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)}
+	n, err := downloader.Download(file, input)
+	if err != nil {
+		misc.Debugf("cannot download from S3. Error: %s", err)
+		misc.Debugf("removing file %s after unsuccessful download", filename)
+		ferr := os.Remove(filename)
+		if ferr != nil {
+			misc.Debugf("failed to remove %s Error: %s", filename, err)
+		}
+		return fmt.Errorf("cannot download from S3. Error: %w", err)
+	}
+	misc.Debugf("successfully downloaded %d bytes to %s\n", n, filename)
+	return nil
 }

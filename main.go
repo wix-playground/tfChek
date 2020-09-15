@@ -18,7 +18,7 @@ import (
 const (
 	MajorVersion = 0
 	MinorVersion = 9
-	Revision     = 0
+	Revision     = 1
 )
 
 func config() {
@@ -30,8 +30,6 @@ func config() {
 	flag.Int(misc.PortKey, misc.PORT, "Port application will listen to")
 	flag.Bool(misc.DebugKey, false, "Print debug messages")
 	flag.String(misc.OutDirKey, "/var/tfChek/out/", "Directory to save output of the task runs")
-	//TODO: remove this flag. Saving to the filesystem should be always on
-	flag.Bool(misc.DismissOutKey, true, "Save tasks output to the files in outdir")
 	flag.String(misc.TokenKey, "", "GitHub API access token")
 	flag.Bool(misc.VersionKey, false, "Show the version info")
 	flag.Bool(misc.Fuse, false, "Prevent server from applying run.sh")
