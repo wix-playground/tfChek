@@ -31,6 +31,8 @@ const (
 	RepoOwnerKey          = "repo_owner"
 	WebHookSecretKey      = "webhook_secret"
 	RepoDirKey            = "repo_dir"
+	RepomanagerPathSuffix = "from_github_api"
+	GitmanagerPathSuffix  = "from_git"
 	CertSourceKey         = "certs_source"
 	LambdaSourceKey       = "lambdas_source"
 	RunDirKey             = "run_dir"

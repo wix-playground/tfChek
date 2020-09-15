@@ -18,7 +18,7 @@ import (
 const (
 	MajorVersion = 0
 	MinorVersion = 9
-	Revision     = 1
+	Revision     = 4
 )
 
 func config() {

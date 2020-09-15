@@ -362,11 +362,19 @@ func (w *WtfTask) getFirstGitManager() (git.Manager, error) {
 	return m42, nil
 }
 
+func getApiVersionForRepomanager() int {
+	if viper.GetBool(misc.GitHubDownload) {
+		return 2
+	} else {
+		return 1
+	}
+}
+
 //TODO: get rid of it
 func (w *WtfTask) getGitManagers() (map[string]git.Manager, error) {
 	gms := make(map[string]git.Manager)
 	for _, cs := range w.context.ConfigSources {
-		manager, err := git.GetManager(cs.RemoteUrl, w.StateLock)
+		manager, err := git.GetManager(cs.RemoteUrl, w.StateLock, getApiVersionForRepomanager())
 		if err != nil {
 			return gms, fmt.Errorf("failed to get git manager for task %d (url: %s) error: %w", w.id, cs, err)
 		}
@@ -485,7 +493,7 @@ func (w *WtfTask) generateRunshPath() (string, error) {
 		//	return "", fmt.Errorf("failed to get full repository name. Error: %w", err)
 		//}
 
-		manager, err := git.GetManager(cs.RemoteUrl, w.StateLock)
+		manager, err := git.GetManager(cs.RemoteUrl, w.StateLock, getApiVersionForRepomanager())
 		if err != nil {
 			return "", fmt.Errorf("cannot obtain git manager for a task %d error: %w", w.id, err)
 		}
@@ -502,7 +510,7 @@ func (w *WtfTask) updateRunshPath() error {
 		//	return "", fmt.Errorf("failed to get full repository name. Error: %w", err)
 		//}
 
-		manager, err := git.GetManager(cs.RemoteUrl, w.StateLock)
+		manager, err := git.GetManager(cs.RemoteUrl, w.StateLock, getApiVersionForRepomanager())
 		if err != nil {
 			return fmt.Errorf("cannot obtain git manager for a task %d error: %w", w.id, err)
 		}

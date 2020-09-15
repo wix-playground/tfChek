@@ -448,7 +448,7 @@ func (rst *RunShTask) getGitManagers() (map[string]git.Manager, error) {
 	} else {
 		managers := make(map[string]git.Manager)
 		for _, gurl := range rst.GitOrigins {
-			gitman, err := git.GetManager(gurl, rst.StateLock)
+			gitman, err := git.GetManager(gurl, rst.StateLock, 1)
 			if err != nil {
 				return nil, err
 			}

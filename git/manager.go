@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -134,10 +135,14 @@ func (b *BuiltInManager) GetPath() string {
 	return b.repoPath
 }
 
+func getRepomgrKey(url, tfState string, apiVersion int) string {
+	return strings.Join([]string{url, tfState, strconv.Itoa(apiVersion)}, ";")
+}
+
 //In case the repo is used for generating .tf files for different terraform states
 //Or it can be empty if terraform uses only 1 state
 //State can be  a env/layer for example
-func GetManager(url, state string) (Manager, error) {
+func GetManager(url, tfState string, apiVersion int) (Manager, error) {
 	if repomngrs == nil {
 		lock.Lock()
 		if repomngrs == nil {
@@ -145,10 +150,7 @@ func GetManager(url, state string) (Manager, error) {
 		}
 		lock.Unlock()
 	}
-	key := url
-	if state != "" {
-		key = key + ";" + state
-	}
+	key := getRepomgrKey(url, tfState, apiVersion)
 	if repomngrs[key] == nil {
 		lock.Lock()
 		if repomngrs[key] == nil {
@@ -158,11 +160,13 @@ func GetManager(url, state string) (Manager, error) {
 			if strings.HasSuffix(repoName, ".git") {
 				repoName = strings.Replace(repoName, ".git", "", 1)
 			}
-			repoPath := path.Join(viper.GetString(misc.RepoDirKey), repoName, state)
+
 			whl := make(map[string]chan string)
-			if viper.GetBool(misc.GitHubDownload) {
+			if viper.GetBool(misc.GitHubDownload) && apiVersion > 1 {
+				repoPath := path.Join(viper.GetString(misc.RepoDirKey), misc.RepomanagerPathSuffix, repoName, tfState)
 				repomngrs[key] = github.NewRepomanager(repoPath, url, whl)
 			} else {
+				repoPath := path.Join(viper.GetString(misc.RepoDirKey), misc.GitmanagerPathSuffix, repoName, tfState)
 				repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: repoPath, webhookLocks: whl}
 			}
 		}
@@ -405,12 +409,12 @@ func (b *BuiltInManager) SwitchTo(branch string) error {
 				return errors.New(fmt.Sprintf("cannot checkout remoteUrl reference %s. Error: %s", localBranch.String(), err))
 			}
 		}
-		b.checkConfig()
+		//b.checkConfig()
 		err := b.trackBranch(origin, branch)
 		if err != nil {
 			return fmt.Errorf("cannot set tracked branch. Error: %w", err)
 		}
-		b.checkConfig()
+		//b.checkConfig()
 		po := getPullOptions(localBranch, origin)
 		misc.Debug(fmt.Sprintf("Trying to pull localBranch %s form repo %s", localBranch, b.remote.String()))
 		for i := 0; i < attempts; i++ {
