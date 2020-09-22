@@ -6,6 +6,8 @@ LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
 WORKDIR /build
 # Copy go mod and sum files
 COPY go.mod go.sum ./
+#Add git to be able to download dependencies form a private repositories
+RUN apk add git
 # Download all dependencies. Depapk add build-baseendencies will be cached if the go.mod and go.sum files are not changed
 RUN go mod download
 # Copy the source from the current directory to the Working Directory inside the container
