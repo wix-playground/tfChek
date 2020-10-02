@@ -20,7 +20,7 @@ gazelle:
 bazel-prep: bazel-clean gazelle-deps gazelle
 
 bazel-build:
-	bazel build --verbose_failures  //:wtf
+	bazel build --verbose_failures  //:tfChek
 
 bazel-cleanbuild: bazel-prep bazel-build
 

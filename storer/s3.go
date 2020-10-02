@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/spf13/viper"
-	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-playground/tfChek/misc"
 	"log"
 	"os"
 	"path/filepath"

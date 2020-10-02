@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/viper"
-	"github.com/wix-system/tfChek/misc"
-	"github.com/wix-system/tfChek/storer"
+	"github.com/wix-playground/tfChek/misc"
+	"github.com/wix-playground/tfChek/storer"
 	"io"
 	"os"
 )

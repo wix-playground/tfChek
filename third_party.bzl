@@ -1978,8 +1978,8 @@ def third_party_dependencies():
     go_repository(
         name = "com_github_wix_system_tfresdif_v3",
         importpath = "github.com/wix-system/tfResDif/v3",
-        sum = "h1:wj1MQsYGbvHnnN1udqgXthN7xsPlPsTOPbUQeYrLXd0=",
-        version = "v3.8.1",
+        sum = "h1:T/b0ejTGuPj2EEkySRrXqQ5SGwPKTQ9Z9EgMHJNnvF4=",
+        version = "v3.9.1-bazel-3",
     )
     go_repository(
         name = "com_github_xanzy_ssh_agent",

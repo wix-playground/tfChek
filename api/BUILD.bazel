@@ -12,6 +12,9 @@ go_library(
     importpath = "github.com/wix-playground/tfChek/api",
     visibility = ["//visibility:public"],
     deps = [
+        "//github:go_default_library",
+        "//launcher:go_default_library",
+        "//misc:go_default_library",
         "@com_github_go_pkgz_auth//:go_default_library",
         "@com_github_go_pkgz_auth//avatar:go_default_library",
         "@com_github_go_pkgz_auth//logger:go_default_library",

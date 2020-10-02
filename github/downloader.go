@@ -3,7 +3,7 @@ package github
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-playground/tfChek/misc"
 	"io"
 	"io/ioutil"
 	"net/http"

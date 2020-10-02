@@ -2,3 +2,7 @@
 static/script/ansi_up/.vscode
 tfchek.yml
 wtf.yml
+bazel-bin
+bazel-out
+bazel-testlogs
+bazel-tfChek

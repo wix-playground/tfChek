@@ -15,6 +15,11 @@ go_library(
     importpath = "github.com/wix-playground/tfChek/launcher",
     visibility = ["//visibility:public"],
     deps = [
+        "//git:go_default_library",
+        "//github:go_default_library",
+        "//misc:go_default_library",
+        "//storer:go_default_library",
+        "//tfChekLog:go_default_library",
         "@com_github_acarl005_stripansi//:go_default_library",
         "@com_github_gorilla_websocket//:go_default_library",
         "@com_github_otiai10_copy//:go_default_library",
