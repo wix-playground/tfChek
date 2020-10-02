@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "emitter.go",
+        "runner.go",
+        "runshtask.go",
+        "task.go",
+        "taskmanager.go",
+        "utils.go",
+        "wtfTaskManager.go",
+        "wtftask.go",
+    ],
+    importpath = "github.com/wix-playground/tfChek/launcher",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_acarl005_stripansi//:go_default_library",
+        "@com_github_gorilla_websocket//:go_default_library",
+        "@com_github_otiai10_copy//:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//apiv2:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//core:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//helpers:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//launcher:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//misc:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//modes:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["utils_test.go"],
+    embed = [":go_default_library"],
+)

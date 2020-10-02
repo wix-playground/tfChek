@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "api.go",
+        "auth.go",
+        "branch_delete_api.go",
+        "handler.go",
+        "misc.go",
+    ],
+    importpath = "github.com/wix-playground/tfChek/api",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_go_pkgz_auth//:go_default_library",
+        "@com_github_go_pkgz_auth//avatar:go_default_library",
+        "@com_github_go_pkgz_auth//logger:go_default_library",
+        "@com_github_go_pkgz_auth//token:go_default_library",
+        "@com_github_gorilla_mux//:go_default_library",
+        "@com_github_gorilla_websocket//:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//apiv2:go_default_library",
+        "@in_gopkg_go_playground_webhooks_v5//github:go_default_library",
+    ],
+)

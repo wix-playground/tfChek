@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "dynamodb.go",
+        "fileSink.go",
+        "files.go",
+        "follower.go",
+        "s3.go",
+        "s3helpers.go",
+    ],
+    importpath = "github.com/wix-playground/tfChek/storer",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_aws_aws_sdk_go//aws:go_default_library",
+        "@com_github_aws_aws_sdk_go//aws/awserr:go_default_library",
+        "@com_github_aws_aws_sdk_go//aws/credentials:go_default_library",
+        "@com_github_aws_aws_sdk_go//aws/session:go_default_library",
+        "@com_github_aws_aws_sdk_go//service/dynamodb:go_default_library",
+        "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
+        "@com_github_aws_aws_sdk_go//service/s3/s3manager:go_default_library",
+        "@com_github_fsnotify_fsnotify//:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//wtflog:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "dynamodb_test.go",
+        "follower_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "@com_github_fsnotify_fsnotify//:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+    ],
+)
