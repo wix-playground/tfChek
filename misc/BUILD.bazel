@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "consts.go",
+        "hashHelper.go",
+        "listConfig.go",
+        "logHelper.go",
+    ],
+    importpath = "github.com/wix-playground/tfChek/misc",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_spf13_viper//:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//misc:go_default_library",
+    ],
+)

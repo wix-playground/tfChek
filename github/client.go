@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/go-github/v28/github"
-	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-playground/tfChek/misc"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"io/ioutil"
 	"log"

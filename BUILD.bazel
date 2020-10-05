@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:exclude third_party
+# gazelle:prefix github.com/wix-playground/tfChek
+gazelle(
+    name = "gazelle",
+)
+
+version = "0.9.6-bazel"
+
+ver_data = version.split(".")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/wix-playground/tfChek",
+    visibility = ["//visibility:private"],
+    x_defs = {
+        "github.com/wix-playground/tfChek/main.MajorVersion": ver_data[0],
+        "github.com/wix-playground/tfChek/main.MinorVersion": ver_data[1],
+        "github.com/wix-playground/tfChek/main.Revision": ver_data[2],
+    },
+    deps = [
+        "//api:go_default_library",
+        "//github:go_default_library",
+        "//launcher:go_default_library",
+        "//misc:go_default_library",
+        "@com_github_gorilla_mux//:go_default_library",
+        "@com_github_spf13_pflag//:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+        "@com_github_wix_system_tfresdif_v3//helpers:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "tfChek",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)

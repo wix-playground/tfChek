@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/wix-system/tfChek/launcher"
+	"github.com/wix-playground/tfChek/launcher"
 	"net/http"
 )
 

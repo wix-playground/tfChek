@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"github.com/whilp/git-urls"
-	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-playground/tfChek/misc"
 	"log"
 	"regexp"
 	"strconv"

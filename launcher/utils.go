@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/otiai10/copy"
 	"github.com/spf13/viper"
-	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-playground/tfChek/misc"
 	"log"
 	"os"
 	"strings"

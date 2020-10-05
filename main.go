@@ -3,22 +3,23 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/wix-system/tfChek/api"
-	"github.com/wix-system/tfChek/github"
-	"github.com/wix-system/tfChek/launcher"
-	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-playground/tfChek/api"
+	"github.com/wix-playground/tfChek/github"
+	"github.com/wix-playground/tfChek/launcher"
+	"github.com/wix-playground/tfChek/misc"
 	"github.com/wix-system/tfResDif/v3/helpers"
-	"log"
-	"net/http"
 )
 
 const (
-	MajorVersion = 0
-	MinorVersion = 9
-	Revision     = 4
+	MajorVersion = -1
+	MinorVersion = -1
+	Revision     = -1
 )
 
 func config() {

@@ -9,7 +9,7 @@ import (
 	"github.com/go-pkgz/auth/token"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	"github.com/wix-system/tfChek/misc"
+	"github.com/wix-playground/tfChek/misc"
 	"net/http"
 	"strings"
 	"time"
