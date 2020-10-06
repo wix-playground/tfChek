@@ -35,22 +35,40 @@ RUN apk add build-base
 RUN go build -o tfChek .
 
 #Stage 1
-FROM bash:4.4.23
+FROM debian:stable-slim
 WORKDIR /application
 LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
-RUN apk --no-cache add ca-certificates
+
+RUN apt update
+RUN apt -y install  ca-certificates && update-ca-certificates
+RUN apt -y install  build-essential
+RUN apt -y install git
+RUN apt -y install gnupg2
+RUN apt -y install curl ncurses-bin zip procps
+RUN apt -y install openssh-client
+RUN gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
+RUN curl -sSL https://get.rvm.io | bash -s stable
+RUN chsh -s $(which bash) $(whoami)
+RUN bash -c ' export PATH=$PATH:/usr/local/rvm/bin && rvm install 2.7.1'
+#RUN bash -c ' ls -la ~ && find . -name gem -type f && find /usr -name gem -type f && export PATH=$PATH:/usr/local/rvm/rubies/ruby-2.7.1/bin && gem install bundler -v 2.1.4'
+RUN bash -c 'export PATH=$PATH:/usr/local/rvm/rubies/ruby-2.7.1/bin && gem install netaddr -v 2.0.4 && gem install colorize  zip  && gem install json -v 2.3.0 && \
+    gem install ffi -v 1.13.1 && \
+    gem install process-terminal -v 0.2.0 && \
+    gem install process-group -v 1.2.3 && \
+    gem install process-pipeline -v 1.0.2 && \
+    gem install graphviz -v 1.2.0'
 
 #Add user
 RUN addgroup --system deployer && adduser --system --ingroup deployer --uid 5500 deployer
 
 #Temporary workaround to fix broken GitHub Authentication
-RUN apk add openssh
 RUN mkdir /home/deployer/.ssh && chmod 700 /home/deployer/.ssh
 RUN mkdir /home/deployer/.chef && chmod 770 /home/deployer/.chef
 COPY luggage/ssh_config /home/deployer/.ssh/config
 COPY luggage/github_know_hosts /home/deployer/.ssh/known_hosts
 RUN chown -R deployer:deployer /home/deployer/.ssh
-RUN apk add git
+
+
 
 #Configure AWS access for terraform
 RUN mkdir /home/deployer/.aws && chown deployer:deployer /home/deployer/.aws
