@@ -9,4 +9,4 @@ go mod download
 # Build application
 go build -o tfChek .
 
-# ls -lah .
+ls -lah .
