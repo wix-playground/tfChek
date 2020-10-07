@@ -1,38 +1,39 @@
 # syntax=docker/dockerfile:experimental
 
-#Stage 0
-FROM golang:1.14.4-alpine3.12
+##Stage 0
+#FROM golang:1.14.4-alpine3.12
+#
+## Add Maintainer Info
+#LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
+## Set the Current Working Directory inside the container
+#WORKDIR /build
+## Copy go mod and sum files
+#COPY go.mod go.sum ./
+##Add git to be able to download dependencies form a private repositories
+#RUN apk add git
+#
+## Install ssh client and git
+#RUN apk add --no-cache openssh-client
+## Download public key for github.com
+#RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+## Update git config
+#RUN git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
+### Clone private repository
+##RUN --mount=type=ssh git clone git@github.com:wix-system/tfResDif.git wtf
+#
+## Download all dependencies. Depapk add build-baseendencies will be cached if the go.mod and go.sum files are not changed
+#ENV GOPRIVATE=github.com/wix-system
+#RUN --mount=type=ssh go mod download
+## Copy the source from the current directory to the Working Directory inside the container
+#COPY . .
+## Install GCC
+#RUN apk add build-base
+#
+##Mount GitHub token
+##RUN --mount=type=secret,id=github cat /run/secrets/github
+## Build the Go app
+#RUN go build -o tfChek .
 
-# Add Maintainer Info
-LABEL maintainer="Maksym Shkolnyi <maksymsh@wix.com>"
-# Set the Current Working Directory inside the container
-WORKDIR /build
-# Copy go mod and sum files
-COPY go.mod go.sum ./
-#Add git to be able to download dependencies form a private repositories
-RUN apk add git
-
-# Install ssh client and git
-RUN apk add --no-cache openssh-client
-# Download public key for github.com
-RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
-# Update git config
-RUN git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
-## Clone private repository
-#RUN --mount=type=ssh git clone git@github.com:wix-system/tfResDif.git wtf
-
-# Download all dependencies. Depapk add build-baseendencies will be cached if the go.mod and go.sum files are not changed
-ENV GOPRIVATE=github.com/wix-system
-RUN --mount=type=ssh go mod download
-# Copy the source from the current directory to the Working Directory inside the container
-COPY . .
-# Install GCC
-RUN apk add build-base
-
-#Mount GitHub token
-#RUN --mount=type=secret,id=github cat /run/secrets/github
-# Build the Go app
-RUN go build -o tfChek .
 
 #Stage 1
 FROM debian:stable-slim
@@ -98,10 +99,10 @@ COPY  --chown=deployer:deployer /luggage/star_wixpress_com_until_2020.* /home/de
 #End of temporary layer (DELETE AFTER OCTOBER 2020)
 
 #Copy files
-COPY  --chown=deployer:deployer --from=0 /build/tfChek .
-COPY  --chown=deployer:deployer --from=0 /build/luggage/tfChek.sh .
-COPY  --chown=deployer:deployer --from=0 /build/templates /templates
-COPY  --chown=deployer:deployer --from=0 /build/static static
+COPY  --chown=deployer:deployer /bin/tfChek .
+COPY  --chown=deployer:deployer /luggage/tfChek.sh .
+COPY  --chown=deployer:deployer /templates /templates
+COPY  --chown=deployer:deployer /static static
 RUN chown -R deployer:deployer * && mkdir -p /var/tfChek/out && chown -R deployer:deployer /var/tfChek && mkdir /var/run/tfChek && chown -R deployer:deployer /var/run/tfChek
 #Switch user
 USER deployer
@@ -113,5 +114,4 @@ EXPOSE 8085
 # Command to run the executable
 # I have to use enrtypoint to re-export PORT to TFCHEK_PORT variable
 ENTRYPOINT [ "./tfChek.sh" ]
-
 
