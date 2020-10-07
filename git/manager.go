@@ -164,9 +164,11 @@ func GetManager(url, tfState string, apiVersion int) (Manager, error) {
 			whl := make(map[string]chan string)
 			if viper.GetBool(misc.GitHubDownload) && apiVersion > 1 {
 				repoPath := path.Join(viper.GetString(misc.RepoDirKey), misc.RepomanagerPathSuffix, repoName, tfState)
+				misc.Debugf("requesting new github based git repository manager for path %s and url %s", repoPath, url)
 				repomngrs[key] = github.NewRepomanager(repoPath, url, whl)
 			} else {
 				repoPath := path.Join(viper.GetString(misc.RepoDirKey), misc.GitmanagerPathSuffix, repoName, tfState)
+				misc.Debugf("creating new builtin git repository manager for path %s and url %s", repoPath, url)
 				repomngrs[key] = &BuiltInManager{remoteUrl: url, repoPath: repoPath, webhookLocks: whl}
 			}
 		}

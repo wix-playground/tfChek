@@ -347,8 +347,13 @@ func (w *WtfTask) notifySubscribers() {
 func (w *WtfTask) getFirstGitManager() (git.Manager, error) {
 	managers, err := w.getGitManagers()
 	if err != nil {
-		misc.Debugf("no git managers were returned for a task %d", w.id)
+
+		misc.Debugf("error obtaining git managers %s ", err)
 		return nil, err
+	}
+	if len(managers) == 0 {
+		misc.Debugf("no git managers were returned for a task %d", w.id)
+
 	}
 	m42, ok := managers[misc.PROD42]
 	if !ok {

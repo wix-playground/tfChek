@@ -3,9 +3,9 @@ package github
 import (
 	"context"
 	"fmt"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v28/github"
 	"github.com/wix-playground/tfChek/misc"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 	"io/ioutil"
 	"log"
 	"net/url"

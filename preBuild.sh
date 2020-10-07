@@ -5,8 +5,8 @@ git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
 # Export Go private repository
 export GOPRIVATE=github.com/wix-system
 # Download dependencies
-go mod download
+go mod -mod=mod download
 # Build application
 [ -d bin ] || mkdir bin
-go build -o bin/tfChek .
+go build -mod=mod -o bin/tfChek .
 ls -lah bin

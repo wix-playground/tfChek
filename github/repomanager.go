@@ -33,6 +33,7 @@ func NewRepomanager(path, remote string, webhookLocks map[string]chan string) *R
 			misc.Debugf("successfully obtained repository manager for %s - %s", remote, path)
 		}
 	}
+	misc.Debugf("new github repository manager has been created for %s", remote)
 	return &rm
 }
 

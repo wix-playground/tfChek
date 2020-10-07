@@ -1,6 +1,6 @@
 module github.com/wix-playground/tfChek
 
-go 1.13
+go 1.15
 
 require (
 	cloud.google.com/go v0.49.0 // indirect
@@ -43,5 +43,4 @@ require (
 	gopkg.in/go-playground/webhooks.v5 v5.13.0
 	gopkg.in/ini.v1 v1.57.0 // indirect
 	gopkg.in/oauth2.v3 v3.12.0 // indirect
-	gopkg.in/src-d/go-git.v4 v4.13.1
 )
