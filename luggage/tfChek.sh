@@ -33,8 +33,7 @@ GOOGLE_BACKEND_CREDENTIALS="/configs/gcloud_keyfile.json"
 export GOOGLE_CLOUD_KEYFILE_JSON GOOGLE_BACKEND_CREDENTIALS
 
 #Fix RVM paths
-RVM_RUBY_VERSION=2.7.1
-export PATH=$PATH:/usr/local/rvm/bin:/usr/local/rvm/rubies/ruby-${RVM_RUBY_VERSION}/bin
+export PATH=$PATH:/usr/local/rvm/bin:/usr/local/rvm/rubies/ruby-2.7.1/bin
 
 #Source profile
 source /configs/profile && echo -e "\033[0;32mOK\033[0m Bash profile has been successfully sourced" || echo -e "\033[0;31mERROR\033[0m Failed to source bash profile"
