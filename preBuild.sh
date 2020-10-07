@@ -7,6 +7,6 @@ export GOPRIVATE=github.com/wix-system
 # Download dependencies
 go mod download
 # Build application
-go build -o tfChek .
-
-ls -lah .
+[ -d bin ] || mkdir bin
+go build -o bin/tfChek .
+ls -lah bin
