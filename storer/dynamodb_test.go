@@ -2,8 +2,8 @@ package storer
 
 import (
 	"github.com/spf13/viper"
+	"github.com/wix-playground/tfChek/misc"
 	"testing"
-	"tfChek/misc"
 )
 
 func Test_createSequenceTable(t *testing.T) {

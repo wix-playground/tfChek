@@ -3,10 +3,10 @@ package storer
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/wix-playground/tfChek/misc"
 	"io/ioutil"
 	"os"
 	"testing"
-	"tfChek/misc"
 	"time"
 )
 
