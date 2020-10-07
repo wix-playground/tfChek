@@ -21,24 +21,23 @@ func DownloadRevision(manager *Manager, ref, dest string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to download repo archive by link %s. Error: %w", link.String(), err)
 	}
-	base := path.Base(dest)
-	stat, err := os.Stat(base)
+	stat, err := os.Stat(dest)
 	if os.IsNotExist(err) {
-		misc.Debugf("%s directory does not exist. Trying to create one...", base)
-		err := os.MkdirAll(base, 0755)
+		misc.Debugf("%s directory does not exist. Trying to create one...", dest)
+		err := os.MkdirAll(dest, 0755)
 		if err != nil {
-			misc.Debugf("error directory %s does not exist", base)
-			return "", fmt.Errorf("destination directory %s does not exist", base)
+			misc.Debugf("error directory %s does not exist", dest)
+			return "", fmt.Errorf("destination directory %s does not exist", dest)
 		} else {
-			misc.Debugf("directory %s has been successfully created", base)
-			stat, err = os.Stat(base)
+			misc.Debugf("directory %s has been successfully created", dest)
+			stat, err = os.Stat(dest)
 			if err != nil {
-				return "", fmt.Errorf("Cannot stat %s directory. Error: %w", base, err)
+				return "", fmt.Errorf("Cannot stat %s directory. Error: %w", dest, err)
 			}
 		}
 	}
 	if !stat.IsDir() {
-		return "", fmt.Errorf("destination directory %s is not a directory", base)
+		return "", fmt.Errorf("destination directory %s is not a directory", dest)
 	}
 	zipFile, err := os.OpenFile(fmt.Sprintf("%s-%s.zip", dest, ref), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
